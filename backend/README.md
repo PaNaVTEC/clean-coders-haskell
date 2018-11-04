@@ -1,6 +1,4 @@
-# Cleancoders backend writen in Haskell with a React frontend.
-
-Frontend from https://github.com/sandromancuso/cleancoders_openchat_webclient
+# Cleancoders backend
 
 Developed by
 ============
