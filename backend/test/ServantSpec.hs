@@ -31,7 +31,7 @@ spec =
         "/users"
         [json|{username: "used", password: "", about: ""}|]
           `shouldRespondWith`
-        400
+        "Username already in use." {matchStatus = 400}
 
 post path = request "POST" path headers
   where headers =  [("Content-Type", "application/json")]
