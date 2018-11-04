@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9a862dc01264597390856c769586facb6a5c2fcc1e50f51b03fe96ccbcfc2cea
+-- hash: 421f0a29238d3bbea2c3643973a63a0e9034aa0148f0355371ee8a534fc0f5b4
 
 name:           cleancoders-openchat-haskell
 version:        0.1.0.0
@@ -47,6 +47,7 @@ library
     , time
     , transformers
     , wai
+    , wai-extra
     , warp
   default-language: Haskell2010
 
@@ -72,6 +73,7 @@ executable cleancoders-openchat-haskell-hs-exe
     , time
     , transformers
     , wai
+    , wai-extra
     , warp
   default-language: Haskell2010
 
@@ -101,5 +103,6 @@ test-suite cleancoders-openchat-haskell-hs-test
     , time
     , transformers
     , wai
+    , wai-extra
     , warp
   default-language: Haskell2010
