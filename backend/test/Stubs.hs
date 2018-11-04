@@ -15,7 +15,8 @@ newtype TestM m a = TestM {
     } deriving (Functor, Applicative, Monad, MonadIO, MonadState [User])
 
 instance MonadDb (TestM Handler) where
-    runQuery (InsertUser user) = modify (++ [user])
+  runQuery (QueryByName name) = undefined
+  runQuery (InsertUser user)  = modify (++ [user])
 
 instance (Monad m) => MonadLogger (TestM m) where
-    monadLoggerLog _ _ _ m = TestM $ tell [show $ toLogStr m]
+  monadLoggerLog _ _ _ m = TestM $ tell [show $ toLogStr m]

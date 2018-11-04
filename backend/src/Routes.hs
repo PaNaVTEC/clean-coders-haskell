@@ -9,16 +9,18 @@ module Routes ( routes, APIEndpoints, AppM(..), AppT ) where
 
 import           Control.Monad.Logger
 import           Control.Monad.Reader
+import           Data
 import           Data.Aeson.Types
 import           Data.Text
+import           Database.PostgreSQL.Simple
 import           GHC.Generics
 import           Servant
-import           Web.FormUrlEncoded   (FromForm (..), ToForm (..))
+import           Web.FormUrlEncoded         (FromForm (..), ToForm (..))
 
 type AppT a = AppM Handler a
 newtype AppM m a = AppM {
-  runAppM :: LoggingT m a
-} deriving (Functor, Applicative, Monad, MonadIO, MonadLogger)
+  runAppM :: LoggingT (ReaderT Connection m) a
+} deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader Connection, MonadDb)
 
 data RegisterBody = RegisterBody {
   username :: Text,
@@ -40,10 +42,11 @@ instance ToForm RegisterBody
 type APIEndpoints =
   "users" :> ReqBody '[JSON, FormUrlEncoded] RegisterBody :> Post '[JSON] ApiUser
 
-routes :: (MonadLogger m) => ServerT APIEndpoints m
-routes = return registerUser
+routes :: (MonadLogger m, MonadDb m) => ServerT APIEndpoints m
+routes = registerUser
 
-registerUser :: (MonadLogger m) => m ApiUser
-registerUser = do
+registerUser :: (MonadLogger m, MonadDb m) => RegisterBody -> m ApiUser
+registerUser body = do
+  runQuery . QueryByName . UserName . username $ body
   logInfoN "POST /users"
   return $ ApiUser "" "" ""
