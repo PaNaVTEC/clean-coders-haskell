@@ -38,7 +38,7 @@ instance FromForm RegisterBody
 instance ToForm RegisterBody
 
 type APIEndpoints =
-  "users" :> ReqBody '[FormUrlEncoded] RegisterBody :> Post '[JSON] ApiUser
+  "users" :> ReqBody '[JSON, FormUrlEncoded] RegisterBody :> Post '[JSON] ApiUser
 
 routes :: (MonadLogger m) => ServerT APIEndpoints m
 routes = return registerUser
