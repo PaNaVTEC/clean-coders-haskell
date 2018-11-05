@@ -12,6 +12,7 @@ module ServantSpec (main, spec) where
 import           Control.Monad.State
 import           Control.Monad.Writer
 import           Data
+import           Data.Text            (Text)
 import           Data.UUID
 import           Lib
 import           Servant
@@ -24,7 +25,7 @@ main = hspec $ spec
 
 spec :: Spec
 spec =
-    with (anAppWith [anUser nil "used" ""]) $ do
+    with (anAppWith [anUser nil "used" "" ""]) $ do
     describe "POST users" $ do
      it "fail with 400 if username is in use" $ do
       post
@@ -42,5 +43,5 @@ anAppWith users = return $ app nt
     nt :: TestM Handler a -> Handler a
     nt appM = evalStateT (fst <$> runWriterT (runTestM appM)) users
 
-anUser :: UUID -> String -> String -> User
-anUser _id name _about = User (UserId _id) (UserName name) (About _about)
+anUser :: UUID -> Text -> Text -> Text -> User
+anUser _id name _about _password = User (UserId _id) (UserName name) (About _about) (Password _password)

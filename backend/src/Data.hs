@@ -19,15 +19,17 @@ import           Database.PostgreSQL.Simple.ToField
 import           Database.PostgreSQL.Simple.ToRow
 import           GHC.Generics
 
-newtype UserId = UserId UUID deriving (Show, Generic, FromField, ToField)
-newtype UserName = UserName Text deriving (Show, Generic, FromField, ToField)
-newtype About = About Text deriving (Show, Generic, FromField, ToField)
+newtype UserId = UserId { unUserId :: UUID } deriving (Eq, Show, Generic, FromField, ToField)
+newtype UserName = UserName { unUserName :: Text } deriving (Eq, Show, Generic, FromField, ToField)
+newtype About = About { unAbout :: Text } deriving (Eq, Show, Generic, FromField, ToField)
+newtype Password = Password { unPassword :: Text } deriving (Eq, Show, Generic, FromField, ToField)
 
 data User = User {
     userId   :: UserId,
     userName :: UserName,
-    about    :: About
-  } deriving (Show, Generic)
+    about    :: About,
+    password :: Password
+  } deriving (Eq, Show, Generic)
 
 data DbQueries = QueryByName UserName deriving Show
 data DbCommands = InsertUser User deriving Show
@@ -66,5 +68,5 @@ instance MonadIO m => MonadDb (ReaderT Connection m) where
   runCommand :: DbCommands -> ReaderT Connection m ()
   runCommand (InsertUser user) = do
     conn <- ask
-    _ <- liftIO $ execute conn "INSERT INTO users VALUES (?, ?, ?)" (userId user, userName user, about user)
+    _ <- liftIO $ execute conn "INSERT INTO users VALUES (?, ?, ?, ?)" (userId user, userName user, about user, password user)
     return ()
