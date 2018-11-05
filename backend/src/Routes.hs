@@ -47,6 +47,6 @@ routes = registerUser
 
 registerUser :: (MonadLogger m, MonadDb m) => RegisterBody -> m ApiUser
 registerUser body = do
-  runQuery . QueryByName . UserName . username $ body
+  _ <- runQuery . QueryByName . UserName . username $ body
   logInfoN "POST /users"
   return $ ApiUser "" "" ""

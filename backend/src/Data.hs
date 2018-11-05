@@ -1,65 +1,70 @@
-{-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE DeriveGeneric     #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE GADTs             #-}
-{-# LANGUAGE InstanceSigs      #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DefaultSignatures          #-}
+{-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE GADTs                      #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE InstanceSigs               #-}
+{-# LANGUAGE OverloadedStrings          #-}
+
 module Data where
 
 import           Control.Monad.Except
 import           Control.Monad.Logger
 import           Control.Monad.Reader
-import           Data.Text                          (Text, unpack)
+import           Data.Text                            (Text)
 import           Data.UUID
 import           Database.PostgreSQL.Simple
-import           Database.PostgreSQL.Simple.FromRow
+import           Database.PostgreSQL.Simple.FromField
 import           Database.PostgreSQL.Simple.ToField
 import           Database.PostgreSQL.Simple.ToRow
 import           GHC.Generics
 
-newtype UserId = UserId UUID deriving Show
-newtype UserName = UserName Text deriving Show
-newtype About = About Text deriving Show
+newtype UserId = UserId UUID deriving (Show, Generic, FromField, ToField)
+newtype UserName = UserName Text deriving (Show, Generic, FromField, ToField)
+newtype About = About Text deriving (Show, Generic, FromField, ToField)
 
 data User = User {
     userId   :: UserId,
     userName :: UserName,
     about    :: About
-  } deriving Show
+  } deriving (Show, Generic)
 
-
-data DbOperations = InsertUser User | QueryByName UserName deriving Show
+data DbQueries = QueryByName UserName deriving Show
+data DbCommands = InsertUser User deriving Show
 
 class Monad m => MonadDb m where
-   runQuery :: DbOperations -> m [User]
+   runQuery :: DbQueries -> m [User]
 
-   default runQuery :: (MonadDb m', MonadTrans t, t m' ~ m) => DbOperations -> m [User]
+   runCommand :: DbCommands -> m ()
+
+   default runQuery :: (MonadDb m', MonadTrans t, t m' ~ m) => DbQueries -> m [User]
    runQuery q = lift $ runQuery q
+
+   default runCommand :: (MonadDb m', MonadTrans t, t m' ~ m) => DbCommands -> m ()
+   runCommand q = lift $ runCommand q
 
 instance MonadDb m => MonadDb (ExceptT a m)
 instance MonadDb m => MonadDb (LoggingT m)
 
-data UserDb = UserDb {
-    iduser    :: UUID ,
-    nameuser  :: Text ,
-    aboutuser :: Text
-  } deriving (Show, Generic)
+instance FromRow User
 
-instance FromRow UserDb
-instance ToRow UserDb where
+instance ToRow User where
   toRow user = [
-     toField . iduser $ user,
-     toField . nameuser $ user,
-     toField . aboutuser $ user]
+     toField . userId $ user,
+     toField . userName $ user,
+     toField . about $ user]
 
 instance MonadIO m => MonadDb (ReaderT Connection m) where
-  runQuery :: DbOperations -> ReaderT Connection m [User]
+  runQuery :: DbQueries -> ReaderT Connection m [User]
   runQuery q = do
     conn <- ask
-    liftIO $ fmap (fmap toUser) $ toSql conn q
+    liftIO $ toSql conn q
     where
-      toUser user = User (UserId $ iduser user) (UserName $ nameuser user) (About $ aboutuser user)
-      toSql :: Connection -> DbOperations -> IO [UserDb]
-      toSql conn (QueryByName (UserName name)) = query conn "SELECT * FROM users WHERE nameuser = ?" name
-      toSql conn (InsertUser user)  = undefined
+      toSql :: Connection -> DbQueries -> IO [User]
+      toSql conn (QueryByName (UserName n)) = query conn "SELECT * FROM users WHERE nameuser = ?" [n]
 
+  runCommand :: DbCommands -> ReaderT Connection m ()
+  runCommand (InsertUser user) = do
+    conn <- ask
+    _ <- liftIO $ execute conn "INSERT INTO users VALUES (?, ?, ?)" (userId user, userName user, about user)
+    return ()

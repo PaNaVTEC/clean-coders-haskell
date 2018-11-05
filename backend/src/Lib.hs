@@ -6,7 +6,6 @@
 
 module Lib ( startApp , app ) where
 
-import           Control.Monad.IO.Class
 import           Control.Monad.Logger
 import           Control.Monad.Reader
 import           Data
