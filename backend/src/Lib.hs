@@ -15,7 +15,6 @@ import           Network.Wai.Middleware.RequestLogger
 import           Routes
 import           Servant
 
-
 app :: (MonadLogger m, MonadDb m) => (forall a. m a -> Handler a) -> Application
 app nt = logStdoutDev $ serve proxy $ hoistServer proxy nt routes
   where proxy = (Proxy :: Proxy APIEndpoints)
