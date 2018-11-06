@@ -57,18 +57,34 @@ routes = registerUser
 registerUser :: (MonadLogger m, MonadDb m, MonadError ServantErr m) => RegisterBody -> m ApiUser
 registerUser body = do
   logInfoN "POST /users"
-  mu <- listToMaybe <$> (runQuery . QueryByName . UserName . bodyUserName $ body)
+  mu <- queryUserByName body
   maybe (registerUser' body) throwUserAlreadyExist mu
   where
-    throwUserAlreadyExist = (const $ throwError err400 { errBody = "Username already in use." })
+    throwUserAlreadyExist = (const $
+                             throwError
+                             err400 { errBody = "Username already in use." })
+
+queryUserByName :: MonadDb m => RegisterBody -> m (Maybe User)
+queryUserByName body = listToMaybe <$> (runQuery . QueryByName . UserName . bodyUserName $ body)
 
 registerUser' :: MonadDb m => RegisterBody -> m ApiUser
 registerUser' body = do
   insertUser nil
-  userToApi <$> head <$> (runQuery . QueryByName . UserName . bodyUserName $ body)
+  mu <- queryUserByName body
+  return $ maybe (error "User not inserted correctly") userToApi mu
   where
+    insertUser :: MonadDb m => UUID -> m ()
     insertUser uuid = runCommand $ InsertUser $ bodyToUser uuid
-    bodyToUser uuid = User (UserId uuid) (UserName $ bodyUserName body) (About $ bodyAbout body) (Password $ bodyPassword body)
-    userToApi user = ApiUser (toText $ unUserId $ userId user)
-                             (unUserName $ userName user)
-                             (unAbout $ about user)
+
+    bodyToUser :: UUID -> User
+    bodyToUser uuid = User
+      (UserId uuid)
+      (UserName $ bodyUserName body)
+      (About $ bodyAbout body)
+      (Password $ bodyPassword body)
+
+    userToApi :: User -> ApiUser
+    userToApi user = ApiUser
+      (toText $ unUserId $ userId user)
+      (unUserName $ userName user)
+      (unAbout $ about user)
