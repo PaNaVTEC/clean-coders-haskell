@@ -22,6 +22,8 @@ import           Data.UUID
 import           Database.PostgreSQL.Simple
 import           GHC.Generics
 import           Servant
+import           UsersService               (RegisterUserError (..),
+                                             registerUser)
 
 newtype AppM a = AppM {
   runAppM :: LoggingT (ReaderT Connection Handler) a
@@ -52,39 +54,27 @@ type APIEndpoints =
   "users" :> ReqBody '[JSON] RegisterBody :> PostCreated '[JSON] ApiUser
 
 routes :: (MonadLogger m, MonadDb m, MonadError ServantErr m) => ServerT APIEndpoints m
-routes = registerUser
+routes = registerUserRoute
 
-registerUser :: (MonadLogger m, MonadDb m, MonadError ServantErr m) => RegisterBody -> m ApiUser
-registerUser body = do
-  logInfoN "POST /users"
-  mu <- queryUserByName body
-  maybe (registerUser' body) throwUserAlreadyExist mu
+registerUserRoute :: (MonadLogger m, MonadDb m, MonadError ServantErr m) => RegisterBody -> m ApiUser
+registerUserRoute body = do
+  ei <- registerUser (registerBody' body)
+  either throwRegisterError (return . userToApi) ei
   where
-    throwUserAlreadyExist = (const $
-                             throwError
-                             err400 { errBody = "Username already in use." })
-
-queryUserByName :: MonadDb m => RegisterBody -> m (Maybe User)
-queryUserByName body = listToMaybe <$> (runQuery . QueryByName . UserName . bodyUserName $ body)
-
-registerUser' :: MonadDb m => RegisterBody -> m ApiUser
-registerUser' body = do
-  insertUser nil
-  mu <- queryUserByName body
-  return $ maybe (error "User not inserted correctly") userToApi mu
-  where
-    insertUser :: MonadDb m => UUID -> m ()
-    insertUser uuid = runCommand $ InsertUser $ bodyToUser uuid
-
-    bodyToUser :: UUID -> User
-    bodyToUser uuid = User
-      (UserId uuid)
-      (UserName $ bodyUserName body)
-      (About $ bodyAbout body)
-      (Password $ bodyPassword body)
-
     userToApi :: User -> ApiUser
     userToApi user = ApiUser
       (toText $ unUserId $ userId user)
       (unUserName $ userName user)
       (unAbout $ about user)
+
+    registerBody' _body = (UserName $ bodyUserName _body,
+                          Password $ bodyPassword _body,
+                          About $ bodyAbout _body)
+
+    throwRegisterError UsernameAlreadyInUse = throwError
+      err400
+      {errBody = "Username already in use."}
+
+    throwRegisterError UserNotInserted = throwError
+      err500
+      {errBody = "Internal server error."}
