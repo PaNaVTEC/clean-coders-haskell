@@ -20,6 +20,7 @@ import           Stubs
 import           Test.Hspec
 import           Test.Hspec.Wai       hiding (post)
 import           Test.Hspec.Wai.JSON
+
 main :: IO ()
 main = hspec $ spec
 
@@ -40,7 +41,7 @@ post path = request "POST" path headers
 anAppWith :: Monad m => [User] -> m Application
 anAppWith users = return $ app nt
   where
-    nt :: TestM Handler a -> Handler a
+    nt :: TestM a -> Handler a
     nt appM = evalStateT (fst <$> runWriterT (runTestM appM)) users
 
 anUser :: UUID -> Text -> Text -> Text -> User

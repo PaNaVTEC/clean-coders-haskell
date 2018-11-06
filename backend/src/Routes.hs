@@ -2,11 +2,14 @@
 {-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE FlexibleContexts           #-}
+{-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE StandaloneDeriving         #-}
 {-# LANGUAGE TypeOperators              #-}
 
-module Routes ( routes, APIEndpoints, AppM(..), AppT ) where
+module Routes ( routes, APIEndpoints, AppM(..)) where
 
 import           Control.Monad.Error.Class
 import           Control.Monad.Logger
@@ -20,10 +23,9 @@ import           Database.PostgreSQL.Simple
 import           GHC.Generics
 import           Servant
 
-type AppT a = AppM Handler a
-newtype AppM m a = AppM {
-  runAppM :: LoggingT (ReaderT Connection m) a
-} deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader Connection, MonadDb)
+newtype AppM a = AppM {
+  runAppM :: LoggingT (ReaderT Connection Handler) a
+} deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader Connection, MonadDb, MonadError ServantErr)
 
 data RegisterBody = RegisterBody {
   bodyUserName :: Text,
@@ -51,8 +53,9 @@ registerUser :: (MonadLogger m, MonadDb m, MonadError ServantErr m) => RegisterB
 registerUser body = do
   logInfoN "POST /users"
   mu <- listToMaybe <$> (runQuery . QueryByName . UserName . bodyUserName $ body)
-  maybe undefined (const $ err400 { errBody = "Your request makes no sense to me." }) mu
-
+  maybe undefined throwUserAlreadyExist mu
+  where
+    throwUserAlreadyExist = (const $ throwError err400 { errBody = "Username already in use." })
 
 registerUser' :: MonadDb m => RegisterBody -> m ApiUser
 registerUser' body = do

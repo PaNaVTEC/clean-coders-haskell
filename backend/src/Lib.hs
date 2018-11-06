@@ -25,8 +25,8 @@ startApp = do
   conn <- prodConn
   run 4321 $ app (ntAppT conn)
   where
-    ntAppT :: Connection -> AppT a -> Handler a
-    ntAppT conn appT = runReaderT (runStderrLoggingT (runAppM appT)) conn
+    ntAppT :: Connection -> AppM a -> Handler a
+    ntAppT conn appM = runReaderT (runStderrLoggingT (runAppM appM)) conn
 
 prodConn :: IO Connection
 prodConn = connect defaultConnectInfo
