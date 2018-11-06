@@ -39,12 +39,17 @@ data ApiUser = ApiUser {
   apiUserabout :: Text
 } deriving (Show, Generic)
 
-instance ToJSON ApiUser
+instance ToJSON ApiUser where
+  toJSON user = object [
+    "id" .= apiUserId user,
+    "username" .= apiUserName user,
+    "about" .= apiUserabout user]
+
 instance FromJSON RegisterBody where
   parseJSON = withObject "Person" $ \v -> RegisterBody <$> v.: "username" <*> v.: "password" <*> v.: "about"
 
 type APIEndpoints =
-  "users" :> ReqBody '[JSON] RegisterBody :> Post '[JSON] ApiUser
+  "users" :> ReqBody '[JSON] RegisterBody :> PostCreated '[JSON] ApiUser
 
 routes :: (MonadLogger m, MonadDb m, MonadError ServantErr m) => ServerT APIEndpoints m
 routes = registerUser
@@ -53,16 +58,17 @@ registerUser :: (MonadLogger m, MonadDb m, MonadError ServantErr m) => RegisterB
 registerUser body = do
   logInfoN "POST /users"
   mu <- listToMaybe <$> (runQuery . QueryByName . UserName . bodyUserName $ body)
-  maybe undefined throwUserAlreadyExist mu
+  maybe (registerUser' body) throwUserAlreadyExist mu
   where
     throwUserAlreadyExist = (const $ throwError err400 { errBody = "Username already in use." })
 
 registerUser' :: MonadDb m => RegisterBody -> m ApiUser
 registerUser' body = do
-                 insertUser nil
-                 userToApi <$> head <$> (runQuery . QueryByName . UserName . bodyUserName $ body)
-  where insertUser uuid = runCommand $ InsertUser $ bodyToUser uuid
-        bodyToUser uuid = User (UserId uuid) (UserName $ bodyUserName body) (About $ bodyAbout body) (Password $ bodyPassword body)
-        userToApi user = ApiUser (toText $ unUserId $ userId user)
-                                 (unUserName $ userName user)
-                                 (unAbout $ about user)
+  insertUser nil
+  userToApi <$> head <$> (runQuery . QueryByName . UserName . bodyUserName $ body)
+  where
+    insertUser uuid = runCommand $ InsertUser $ bodyToUser uuid
+    bodyToUser uuid = User (UserId uuid) (UserName $ bodyUserName body) (About $ bodyAbout body) (Password $ bodyPassword body)
+    userToApi user = ApiUser (toText $ unUserId $ userId user)
+                             (unUserName $ userName user)
+                             (unAbout $ about user)

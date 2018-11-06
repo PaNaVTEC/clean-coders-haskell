@@ -28,12 +28,18 @@ spec :: Spec
 spec =
     with (anAppWith [anUser nil "used" "" ""]) $ do
     describe "POST users" $ do
+
      it "fail with 400 if username is in use" $ do
-      post
-        "/users"
-        [json|{username: "used", password: "", about: ""}|]
-          `shouldRespondWith`
-        "Username already in use." {matchStatus = 400}
+       post "/users"
+         [json|{username: "used", password: "", about: ""}|]
+           `shouldRespondWith`
+         "Username already in use." {matchStatus = 400}
+
+     it "should return a new user when the username does not exist" $ do
+       post "/users"
+         [json|{username: "aUser", password: "pass", about: "About"}|]
+           `shouldRespondWith`
+         [json|{id: "00000000-0000-0000-0000-000000000000", username: "aUser", about: "About"}|] {matchStatus = 201}
 
 post path = request "POST" path headers
   where headers =  [("Content-Type", "application/json")]
