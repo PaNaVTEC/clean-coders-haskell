@@ -14,7 +14,7 @@ import           Control.Monad.Writer
 import           Data
 import           Data.ByteString.Lazy
 import           Data.Text            (Text)
-import           Data.UUID
+import           IdGenerator
 import           Lib
 import           Network.Wai.Test     (SResponse (..))
 import           Servant
@@ -28,7 +28,7 @@ main = hspec $ spec
 
 spec :: Spec
 spec =
-    with (anAppWith [anUser nil "used" "" ""]) $ do
+    with (anAppWith [anUser nilUUID "used" "" ""]) $ do
     describe "POST users" $ do
 
      it "fail with 400 if username is in use" $ do

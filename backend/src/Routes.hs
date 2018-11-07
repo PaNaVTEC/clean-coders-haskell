@@ -17,9 +17,9 @@ import           Control.Monad.Reader
 import           Data
 import           Data.Aeson.Types
 import           Data.Text                  (Text)
-import           Data.UUID
 import           Database.PostgreSQL.Simple
 import           GHC.Generics
+import           IdGenerator
 import           Servant
 import           UsersService               (RegisterUserError (..),
                                              registerUser)
@@ -52,17 +52,17 @@ instance FromJSON RegisterBody where
 type APIEndpoints =
   "users" :> ReqBody '[JSON] RegisterBody :> PostCreated '[JSON] ApiUser
 
-routes :: (MonadLogger m, MonadDb m, MonadError ServantErr m) => ServerT APIEndpoints m
+routes :: (MonadLogger m, MonadDb m, MonadIdGenerator m, MonadError ServantErr m) => ServerT APIEndpoints m
 routes = registerUserRoute
 
-registerUserRoute :: (MonadLogger m, MonadDb m, MonadError ServantErr m) => RegisterBody -> m ApiUser
+registerUserRoute :: (MonadLogger m, MonadDb m, MonadIdGenerator m, MonadError ServantErr m) => RegisterBody -> m ApiUser
 registerUserRoute body = do
   ei <- registerUser (registerBody' body)
   either throwRegisterError (return . userToApi) ei
   where
     userToApi :: User -> ApiUser
     userToApi user = ApiUser
-      (toText $ unUserId $ userId user)
+      (unUUID $ unUserId $ userId user)
       (unUserName $ userName user)
       (unAbout $ about user)
 

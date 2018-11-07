@@ -11,6 +11,7 @@ import           Control.Monad.State
 import           Control.Monad.Writer
 import           Data
 import           Data.List                 (filter)
+import           IdGenerator
 import           Servant
 
 newtype TestM a = TestM {
@@ -22,6 +23,9 @@ instance MonadDb (TestM) where
     users <- get
     return $ filter (\user -> userName user == name) users
   runCommand (InsertUser user)  = modify (++ [user])
+
+instance MonadIdGenerator (TestM) where
+  generateUUID = return nilUUID
 
 instance MonadLogger (TestM) where
   monadLoggerLog _ _ _ m = TestM $ tell [show $ toLogStr m]
