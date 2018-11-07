@@ -32,20 +32,18 @@ spec =
     describe "POST users" $ do
 
      it "fail with 400 if username is in use" $ do
-       postRegister
-         [json|{username: "used", password: "", about: ""}|]
+       postRegister [json|{username: "used", password: "", about: ""}|]
            `shouldRespondWith`
          "Username already in use." {matchStatus = 400}
 
      it "should return a new user when the username does not exist" $ do
-       postRegister
-         [json|{username: "aUser", password: "pass", about: "About"}|]
+       postRegister [json|{username: "aUser", password: "pass", about: "About"}|]
            `shouldRespondWith`
          [json|{id: "00000000-0000-0000-0000-000000000000", username: "aUser", about: "About"}|] {matchStatus = 201}
 
 postRegister :: ByteString -> WaiSession SResponse
 postRegister = request "POST" "/users" headers
-  where headers =  [("Content-Type", "application/json")]
+  where headers = [("Content-Type", "application/json")]
 
 anAppWith :: Monad m => [User] -> m Application
 anAppWith users = return $ app nt
