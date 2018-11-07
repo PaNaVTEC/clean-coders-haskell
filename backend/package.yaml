@@ -35,6 +35,7 @@ dependencies:
 - monad-logger
 - bytestring
 - http-api-data
+- uuid
 
 library:
   source-dirs: src

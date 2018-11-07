@@ -9,47 +9,46 @@
 
 module ServantSpec (main, spec) where
 
-import           Control.Monad.Logger
-import           Control.Monad.Reader
+import           Control.Monad.State
 import           Control.Monad.Writer
-import           Data.ByteString
-import           Data.Time.Clock.POSIX
+import           Data
+import           Data.Text            (Text)
+import           Data.UUID
 import           Lib
 import           Servant
+import           Stubs
 import           Test.Hspec
-import           Test.Hspec.Wai        hiding (post)
+import           Test.Hspec.Wai       hiding (post)
 import           Test.Hspec.Wai.JSON
 
 main :: IO ()
 main = hspec $ spec
 
 spec :: Spec
-spec = with anApp $ do
-  describe "POST users" $ do
-    it "responds" $ do
-      post
-        "/users"
-        [json|{username: "asdf", password: "asd", about: ""}|]
+spec =
+    with (anAppWith [anUser nil "used" "" ""]) $ do
+    describe "POST users" $ do
 
-          `shouldRespondWith`
+     it "fail with 400 if username is in use" $ do
+       post "/users"
+         [json|{username: "used", password: "", about: ""}|]
+           `shouldRespondWith`
+         "Username already in use." {matchStatus = 400}
 
-        200
+     it "should return a new user when the username does not exist" $ do
+       post "/users"
+         [json|{username: "aUser", password: "pass", about: "About"}|]
+           `shouldRespondWith`
+         [json|{id: "00000000-0000-0000-0000-000000000000", username: "aUser", about: "About"}|] {matchStatus = 201}
 
 post path = request "POST" path headers
   where headers =  [("Content-Type", "application/json")]
 
-type LoggingOutput = [String]
-newtype TestM m a = TestM {
-  runTestM :: WriterT LoggingOutput m a
-} deriving (Functor, Applicative, Monad, MonadIO)
-
-anApp :: Monad m => m Application
-anApp = return $ app nt
+anAppWith :: Monad m => [User] -> m Application
+anAppWith users = return $ app nt
   where
-    nt :: TestM Handler a -> Handler a
-    nt appM = do
-      c <- runWriterT (runTestM appM)
-      return $ fst c
+    nt :: TestM a -> Handler a
+    nt appM = evalStateT (fst <$> runWriterT (runTestM appM)) users
 
-instance (Monad m) => MonadLogger (TestM m) where
-  monadLoggerLog _ _ _ m = TestM $ tell [show $ toLogStr m]
+anUser :: UUID -> Text -> Text -> Text -> User
+anUser _id name _about _password = User (UserId _id) (UserName name) (About _about) (Password _password)
