@@ -16,7 +16,6 @@ import           Control.Monad.Logger
 import           Control.Monad.Reader
 import           Data
 import           Data.Aeson.Types
-import           Data.Maybe                 (listToMaybe, maybe)
 import           Data.Text                  (Text)
 import           Data.UUID
 import           Database.PostgreSQL.Simple
