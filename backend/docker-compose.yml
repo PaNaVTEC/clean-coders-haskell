@@ -7,8 +7,11 @@ services:
     environment:
       POSTGRES_PASSWORD: sample
       POSTGRES_USER: sample
+      POSTGRES_DB: cleancoders_haskell
     ports:
       - 5432:5432
+    volumes:
+      - ./database-migrations/:/docker-entrypoint-initdb.d/
 
   adminer:
    image: adminer
