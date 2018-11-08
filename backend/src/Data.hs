@@ -12,6 +12,7 @@ import           Control.Monad.Except
 import           Control.Monad.Logger
 import           Control.Monad.Reader
 import           Data.Text                            (Text)
+import           Data.Time
 import           Database.PostgreSQL.Simple
 import           Database.PostgreSQL.Simple.FromField
 import           Database.PostgreSQL.Simple.ToField
@@ -25,14 +26,21 @@ newtype About = About { unAbout :: Text } deriving (Eq, Show, Generic, FromField
 newtype Password = Password { unPassword :: Text } deriving (Eq, Show, Generic, FromField, ToField)
 
 data User = User {
-    userId   :: UserId,
-    userName :: UserName,
-    about    :: About,
-    password :: Password
-  } deriving (Eq, Show, Generic)
+  userId   :: UserId,
+  userName :: UserName,
+  about    :: About,
+  password :: Password
+} deriving (Eq, Show, Generic)
 
 data DbQueries = QueryByName UserName deriving Show
 data DbCommands = InsertUser User deriving Show
+
+newtype PostId = PostId { unPostId :: UUID } deriving (Eq, Show, Generic, FromField, ToField)
+data Post = Post {
+  postId :: PostId,
+  text   :: Text,
+  date   :: UTCTime
+} deriving (Eq, Show, Generic)
 
 class Monad m => MonadDb m where
    runQuery :: DbQueries -> m [User]

@@ -20,7 +20,8 @@ import           Data.Text                  (Text)
 import           Database.PostgreSQL.Simple
 import           GHC.Generics
 import           IdGenerator
-import           Servant
+import           PostsService
+import           Servant                    hiding (Post)
 import           UsersService               (RegisterUserError (..),
                                              registerUser)
 
@@ -70,8 +71,15 @@ type APIEndpoints =
 routes :: (MonadLogger m, MonadDb m, MonadIdGenerator m, MonadError ServantErr m) => ServerT APIEndpoints m
 routes = registerUserRoute :<|> userWallRoute
 
-userWallRoute :: Monad m => UUID -> m [ApiPost]
-userWallRoute _userId = return ([] :: [ApiPost])
+userWallRoute :: MonadDb m => UUID -> m [ApiPost]
+userWallRoute _userId = do
+  ei <- getPostsByUserId (UserId _userId)
+  either throwPostsError (return . postToApi) ei
+  where
+    postToApi :: [Post] -> [ApiPost]
+    postToApi _post = undefined
+    throwPostsError :: String -> m a
+    throwPostsError _a = undefined
 
 registerUserRoute :: (MonadLogger m, MonadDb m, MonadIdGenerator m, MonadError ServantErr m) => RegisterBody -> m ApiUser
 registerUserRoute body = do
