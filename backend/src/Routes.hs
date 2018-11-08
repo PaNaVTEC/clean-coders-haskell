@@ -26,7 +26,7 @@ import           UsersService               (RegisterUserError (..),
 
 newtype AppM a = AppM {
   runAppM :: LoggingT (ReaderT Connection Handler) a
-} deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader Connection, MonadDb, MonadError ServantErr)
+} deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader Connection, MonadDb, MonadError ServantErr, MonadIdGenerator)
 
 data RegisterBody = RegisterBody {
   bodyUserName :: Text,

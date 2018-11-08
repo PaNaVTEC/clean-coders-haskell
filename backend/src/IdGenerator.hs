@@ -7,6 +7,7 @@ module IdGenerator where
 
 import           Control.Monad.Except
 import           Control.Monad.Logger
+import           Control.Monad.Reader
 import           Data.Text
 import           Data.UUID                            (nil, toText)
 import           Data.UUID.V4                         (nextRandom)
@@ -20,6 +21,9 @@ class Monad m => MonadIdGenerator m where
 
   default generateUUID :: (MonadIdGenerator m', MonadTrans t, t m' ~ m) => m UUID
   generateUUID = lift generateUUID
+
+instance MonadIO m => MonadIdGenerator (ReaderT a m) where
+  generateUUID = liftIO $ UUID . toText <$> nextRandom
 
 instance MonadIdGenerator IO where
   generateUUID = UUID . toText <$> nextRandom
