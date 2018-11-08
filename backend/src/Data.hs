@@ -63,7 +63,7 @@ instance MonadIO m => MonadDb (ReaderT Connection m) where
     liftIO $ toSql conn q
     where
       toSql :: Connection -> DbQueries -> IO [User]
-      toSql conn (QueryByName (UserName n)) = query conn "SELECT * FROM users WHERE nameuser = ?" [n]
+      toSql conn (QueryByName (UserName n)) = query conn "SELECT * FROM users WHERE userName = ?" [n]
 
   runCommand :: DbCommands -> ReaderT Connection m ()
   runCommand (InsertUser user) = do

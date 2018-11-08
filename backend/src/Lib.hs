@@ -10,8 +10,8 @@ import           Control.Monad.Error.Class
 import           Control.Monad.Logger
 import           Control.Monad.Reader
 import           Data
-import           IdGenerator
 import           Database.PostgreSQL.Simple
+import           IdGenerator
 import           Network.Wai.Handler.Warp
 import           Network.Wai.Middleware.RequestLogger
 import           Routes
@@ -31,7 +31,7 @@ startApp = do
 
 prodConn :: IO Connection
 prodConn = connect defaultConnectInfo
-             { connectDatabase = "sample"
+             { connectDatabase = "cleancoders_haskell"
              , connectUser     = "sample"
              , connectPassword = "sample"
              }
