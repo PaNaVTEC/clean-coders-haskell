@@ -35,7 +35,7 @@ data RegisterBody = RegisterBody {
 } deriving (Show, Generic)
 
 data ApiUser = ApiUser {
-  apiUserId    :: Text,
+  apiUserId    :: UUID,
   apiUserName  :: Text,
   apiUserabout :: Text
 } deriving (Show, Generic)
@@ -56,22 +56,22 @@ instance ToJSON ApiPost where
 
 instance ToJSON ApiUser where
   toJSON user = object [
-    "id" .= apiUserId user,
+    "id"       .= apiUserId user,
     "username" .= apiUserName user,
-    "about" .= apiUserabout user]
+    "about"    .= apiUserabout user]
 
 instance FromJSON RegisterBody where
   parseJSON = withObject "Person" $ \v -> RegisterBody <$> v.: "username" <*> v.: "password" <*> v.: "about"
 
 type APIEndpoints =
   "users" :> ReqBody '[JSON] RegisterBody :> PostCreated '[JSON] ApiUser
-  :<|> "users" :> Capture "userId" Text :> "wall" :> Get '[JSON] [ApiPost]
+  :<|> "users" :> Capture "userId" UUID :> "wall" :> Get '[JSON] [ApiPost]
 
 routes :: (MonadLogger m, MonadDb m, MonadIdGenerator m, MonadError ServantErr m) => ServerT APIEndpoints m
 routes = registerUserRoute :<|> userWallRoute
 
-userWallRoute :: Text -> m [ApiPost]
-userWallRoute _userId = undefined
+userWallRoute :: Monad m => UUID -> m [ApiPost]
+userWallRoute _userId = return ([] :: [ApiPost])
 
 registerUserRoute :: (MonadLogger m, MonadDb m, MonadIdGenerator m, MonadError ServantErr m) => RegisterBody -> m ApiUser
 registerUserRoute body = do
@@ -80,7 +80,7 @@ registerUserRoute body = do
   where
     userToApi :: User -> ApiUser
     userToApi user = ApiUser
-      (unUUID $ unUserId $ userId user)
+      (unUserId $ userId user)
       (unUserName $ userName user)
       (unAbout $ about user)
 

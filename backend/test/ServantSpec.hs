@@ -53,6 +53,9 @@ spec =
              datetime: "2001-01-01T01:01:01"
         }]|] {matchStatus = 200}
 
+    it "returns 404 for a bad request" $ do
+      getWallOf "incorrect uuid" `shouldRespondWith` 404
+
 getWallOf :: [Char] -> WaiSession SResponse
 getWallOf _userId = request "GET" (BS8.pack $ "/users/" ++ _userId ++ "/wall")  [] ""
 
