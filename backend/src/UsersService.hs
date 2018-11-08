@@ -3,13 +3,13 @@
 module UsersService where
 
 import           Data
-import           Data.Maybe (listToMaybe, maybe)
-import           Data.UUID
+import           Data.Maybe  (listToMaybe, maybe)
+import           IdGenerator
 
 type RegisterUserRequest = (UserName, Password, About)
 data RegisterUserError = UsernameAlreadyInUse | UserNotInserted
 
-registerUser :: MonadDb m => RegisterUserRequest -> m (Either RegisterUserError User)
+registerUser :: (MonadIdGenerator m, MonadDb m) => RegisterUserRequest -> m (Either RegisterUserError User)
 registerUser body@(_userName, _, _) = do
   mu <- queryUserByName _userName
   maybe (Right <$> registerUser' body) (const . return . Left $ UsernameAlreadyInUse) mu
@@ -17,9 +17,10 @@ registerUser body@(_userName, _, _) = do
 queryUserByName :: MonadDb m => UserName -> m (Maybe User)
 queryUserByName _userName = listToMaybe <$> (runQuery $ QueryByName _userName)
 
-registerUser' :: MonadDb m => RegisterUserRequest -> m User
+registerUser' :: (MonadIdGenerator m, MonadDb m) => RegisterUserRequest -> m User
 registerUser' (_userName, _password, _about) = do
-  insertUser nil
+  uuid <- generateUUID
+  insertUser uuid
   mu <- queryUserByName _userName
   return $ maybe (error "User not inserted correctly") id mu
   where
