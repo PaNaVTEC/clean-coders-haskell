@@ -1,9 +1,12 @@
 {-# LANGUAGE DefaultSignatures          #-}
 {-# LANGUAGE DeriveGeneric              #-}
+{-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
+{-# LANGUAGE FunctionalDependencies     #-}
 {-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs               #-}
+{-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
 
 module Data where
@@ -32,10 +35,15 @@ data User = User {
   password :: Password
 } deriving (Eq, Show, Generic)
 
-data DbQueries = QueryByName UserName deriving Show
+data DbQueries =
+  QueryByName UserName
+  | QueryById UserId
+  | GetPostsByUserId UserId deriving Show
+
 data DbCommands = InsertUser User deriving Show
 
 newtype PostId = PostId { unPostId :: UUID } deriving (Eq, Show, Generic, FromField, ToField)
+
 data Post = Post {
   postId :: PostId,
   text   :: Text,
