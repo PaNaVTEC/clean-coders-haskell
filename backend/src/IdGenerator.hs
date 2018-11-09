@@ -32,4 +32,4 @@ instance MonadIdGenerator m => MonadIdGenerator (ExceptT a m)
 instance MonadIdGenerator m => MonadIdGenerator (LoggingT m)
 
 nilUUID :: UUID
-nilUUID = UUID $ (toText nil)
+nilUUID = UUID $ toText nil
