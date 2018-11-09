@@ -1,8 +1,6 @@
-{-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs               #-}
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE QuasiQuotes                #-}
@@ -24,7 +22,7 @@ import           Test.Hspec.Wai       hiding (post)
 import           Test.Hspec.Wai.JSON
 
 main :: IO ()
-main = hspec $ spec
+main = hspec spec
 
 spec :: Spec
 spec =
