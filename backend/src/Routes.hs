@@ -16,16 +16,18 @@ import           Control.Monad.Reader
 import           Data
 import           Data.Aeson.Types
 import           Data.Text                  (Text)
+import           Data.Time                  (UTCTime)
 import           Database.PostgreSQL.Simple
 import           GHC.Generics
 import           IdGenerator
-import           Servant
+import           PostsService
+import           Servant                    hiding (Post)
 import           UsersService               (RegisterUserError (..),
                                              registerUser)
 
 newtype AppM a = AppM {
   runAppM :: LoggingT (ReaderT Connection Handler) a
-} deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader Connection, MonadDb, MonadError ServantErr, MonadIdGenerator)
+} deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader Connection, MonadDb User, MonadDb Post, MonadError ServantErr, MonadIdGenerator)
 
 data RegisterBody = RegisterBody {
   bodyUserName :: Text,
@@ -34,34 +36,68 @@ data RegisterBody = RegisterBody {
 } deriving (Show, Generic)
 
 data ApiUser = ApiUser {
-  apiUserId    :: Text,
+  apiUserId    :: UUID,
   apiUserName  :: Text,
   apiUserabout :: Text
 } deriving (Show, Generic)
 
+data ApiPost = ApiPost {
+  apiPostUserId   :: UUID,
+  apiPostId       :: UUID,
+  apiPostText     :: Text,
+  apiPostDatetime :: UTCTime
+} deriving (Show, Generic)
+
+instance ToJSON ApiPost where
+  toJSON post = object [
+    "userId"   .= apiPostUserId post,
+    "postId"   .= apiPostId post,
+    "text"     .= apiPostText post,
+    "datetime" .= apiPostDatetime post]
+
 instance ToJSON ApiUser where
   toJSON user = object [
-    "id" .= apiUserId user,
+    "id"       .= apiUserId user,
     "username" .= apiUserName user,
-    "about" .= apiUserabout user]
+    "about"    .= apiUserabout user]
 
 instance FromJSON RegisterBody where
   parseJSON = withObject "Person" $ \v -> RegisterBody <$> v.: "username" <*> v.: "password" <*> v.: "about"
 
 type APIEndpoints =
   "users" :> ReqBody '[JSON] RegisterBody :> PostCreated '[JSON] ApiUser
+  :<|> "users" :> Capture "userId" UUID :> "wall" :> Get '[JSON] [ApiPost]
 
-routes :: (MonadLogger m, MonadDb m, MonadIdGenerator m, MonadError ServantErr m) => ServerT APIEndpoints m
-routes = registerUserRoute
+routes :: (MonadLogger m, MonadDb User m, MonadDb Post m, MonadIdGenerator m, MonadError ServantErr m) => ServerT APIEndpoints m
+routes = registerUserRoute :<|> userWallRoute
 
-registerUserRoute :: (MonadLogger m, MonadDb m, MonadIdGenerator m, MonadError ServantErr m) => RegisterBody -> m ApiUser
+userWallRoute :: (MonadDb User m, MonadDb Post m, MonadError ServantErr m) => UUID -> m [ApiPost]
+userWallRoute _userId = do
+  ei <- getPostsByUserId (UserId _userId)
+  either throwPostsError (return . postsToApi) ei
+  where
+    postsToApi :: [Post] -> [ApiPost]
+    postsToApi = fmap postToApi
+
+    postToApi :: Post -> ApiPost
+    postToApi _post = ApiPost
+      _userId
+      (unPostId $ postId _post)
+      (postText _post)
+      (postDate _post)
+
+    throwPostsError UserIdDoesNotExist = throwError
+      err404
+      {errBody = "User id does not exist."}
+
+registerUserRoute :: (MonadLogger m, MonadDb User m, MonadIdGenerator m, MonadError ServantErr m) => RegisterBody -> m ApiUser
 registerUserRoute body = do
   ei <- registerUser (registerBody' body)
   either throwRegisterError (return . userToApi) ei
   where
     userToApi :: User -> ApiUser
     userToApi user = ApiUser
-      (unUUID $ unUserId $ userId user)
+      (unUserId $ userId user)
       (unUserName $ userName user)
       (unAbout $ about user)
 
