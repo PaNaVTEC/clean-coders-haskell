@@ -1,4 +1,4 @@
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   userId char(36) PRIMARY KEY,
   userName varchar(100) NOT NULL,
   about text,

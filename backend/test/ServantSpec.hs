@@ -1,9 +1,9 @@
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE InstanceSigs               #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE QuasiQuotes                #-}
+{-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs             #-}
+{-# LANGUAGE InstanceSigs      #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE QuasiQuotes       #-}
 
 module ServantSpec (main, spec) where
 
@@ -13,13 +13,15 @@ import           Data
 import qualified Data.ByteString.Char8 as BS8
 import           Data.ByteString.Lazy
 import           Data.Text             (Text)
+import           Data.Time             (UTCTime)
+import           Data.Time.Clock.POSIX
 import           IdGenerator
 import           Lib
 import           Network.Wai.Test      (SResponse (..))
-import           Servant
+import           Servant               (Application, Handler)
 import           Stubs
 import           Test.Hspec
-import           Test.Hspec.Wai        hiding (post)
+import           Test.Hspec.Wai
 import           Test.Hspec.Wai.JSON
 
 main :: IO ()
@@ -27,7 +29,7 @@ main = hspec spec
 
 spec :: Spec
 spec =
-  with (anAppWith [anUser nilUUID "used" "" ""]) $ do
+  with (anAppWith ([anUser nilUUID "used" "" ""], [aPost nilUUID nilUUID "A new post" (posixSecondsToUTCTime 0) ])) $ do
   describe "Register user" $ do
 
     it "fail with 400 if username is in use" $ do
@@ -41,27 +43,28 @@ spec =
          [json|{id: "00000000-0000-0000-0000-000000000000", username: "aUser", about: "About"}|] {matchStatus = 201}
 
   describe "User wall" $ do
+
     it "returns the wall for the specified user" $ do
-      getWallOf "00000000-0000-0000-0000-000000000001"
+      getWallOf "00000000-0000-0000-0000-000000000000"
         `shouldRespondWith`
         [json|[{
-             userId: "00000000-0000-0000-0000-000000000001",
-             postId: "00000000-0000-0000-0000-000000000001",
+             userId: "00000000-0000-0000-0000-000000000000",
+             postId: "00000000-0000-0000-0000-000000000000",
              text: "A new post",
-             datetime: "2001-01-01T01:01:01"
+             datetime: "1970-01-01T00:00:00Z"
         }]|] {matchStatus = 200}
 
     it "returns 404 for a bad request" $ do
       getWallOf "incorrect uuid" `shouldRespondWith` 404
 
-getWallOf :: [Char] -> WaiSession SResponse
+getWallOf :: String -> WaiSession SResponse
 getWallOf _userId = request "GET" (BS8.pack $ "/users/" ++ _userId ++ "/wall")  [] ""
 
 postRegister :: ByteString -> WaiSession SResponse
 postRegister = request "POST" "/users" headers
   where headers = [("Content-Type", "application/json")]
 
-anAppWith :: Monad m => [User] -> m Application
+anAppWith :: Monad m => GlobalState -> m Application
 anAppWith users = return $ app nt
   where
     nt :: TestM a -> Handler a
@@ -73,3 +76,6 @@ anUser _id _name _about _password = User
   (UserName _name)
   (About _about)
   (Password _password)
+
+aPost :: UUID -> UUID -> Text -> UTCTime -> Post
+aPost _postId _userId = Post (PostId _postId) (UserId _userId)

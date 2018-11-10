@@ -15,9 +15,11 @@ import           IdGenerator
 import           Network.Wai.Handler.Warp
 import           Network.Wai.Middleware.RequestLogger
 import           Routes
-import           Servant
+import           Servant                              (Application, Handler,
+                                                       Proxy (..), ServantErr,
+                                                       hoistServer, serve)
 
-app :: (MonadLogger m, MonadDb m, MonadError ServantErr m, MonadIdGenerator m) => (forall a. m a -> Handler a) -> Application
+app :: (MonadLogger m, MonadDb User m, MonadDb Post m, MonadError ServantErr m, MonadIdGenerator m) => (forall a. m a -> Handler a) -> Application
 app nt = logStdoutDev $ serve proxy $ hoistServer proxy nt routes
   where proxy = Proxy :: Proxy APIEndpoints
 
