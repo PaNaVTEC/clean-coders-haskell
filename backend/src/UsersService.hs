@@ -26,7 +26,7 @@ registerUser' (_userName, _password, _about) = do
   return $ fromMaybe (error "User not inserted correctly") mu
   where
     insertUser :: MonadDb User m => UUID -> m ()
-    insertUser uuid = runCommand $ InsertUser $ bodyToUser uuid
+    insertUser = insert . bodyToUser
 
     bodyToUser :: UUID -> User
     bodyToUser uuid = User (UserId uuid) _userName _about _password

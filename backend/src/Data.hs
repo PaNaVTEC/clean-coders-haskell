@@ -2,7 +2,6 @@
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE FunctionalDependencies     #-}
 {-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs               #-}
@@ -58,22 +57,19 @@ data DbQueries =
   | QueryById UserId
   | GetPostsByUserId UserId deriving Show
 
-data DbCommands a = InsertUser a deriving Show
-
 class Monad m => MonadDb a (m :: * -> *) where
    runQuery :: DbQueries -> m [a]
 
-   runCommand :: DbCommands a -> m ()
+   insert :: a -> m ()
 
    default runQuery :: (MonadDb a m', MonadTrans t, t m' a ~ m a) => DbQueries -> m [a]
    runQuery q = lift $ runQuery q
 
-   default runCommand :: (MonadDb a m', MonadTrans t, t m' a ~ m a) => DbCommands a -> m ()
-   runCommand q = lift $ runCommand q
+   default insert :: (MonadDb a m', MonadTrans t, t m' a ~ m a) => a -> m ()
+   insert = lift . insert
 
-type LoggingP a m = LoggingT m
 instance MonadDb a m => MonadDb a (ExceptT a m)
-instance MonadDb a m => MonadDb a (LoggingP a m)
+instance MonadDb a m => MonadDb a (LoggingT m)
 
 instance MonadIO m => MonadDb User (ReaderT Connection m) where
   runQuery :: DbQueries -> ReaderT Connection m [User]
@@ -85,8 +81,8 @@ instance MonadIO m => MonadDb User (ReaderT Connection m) where
       toSql conn (QueryByName (UserName n)) = query conn "SELECT * FROM users WHERE userName = ?" [n]
       toSql conn (QueryById (UserId n)) = query conn "SELECT * FROM users WHERE userId = ?" [n]
 
-  runCommand :: DbCommands User -> ReaderT Connection m ()
-  runCommand (InsertUser user) = do
+  insert :: User -> ReaderT Connection m ()
+  insert user = do
     conn <- ask
     _ <- liftIO $ execute conn "INSERT INTO users VALUES (?, ?, ?, ?)" (userId user, userName user, about user, password user)
     return ()
@@ -100,5 +96,5 @@ instance MonadIO m => MonadDb Post (ReaderT Connection m) where
       toSql :: Connection -> DbQueries -> IO [Post]
       toSql conn (GetPostsByUserId (UserId n)) = query conn "SELECT * FROM posts WHERE userId = ?" [n]
 
-  runCommand :: DbCommands Post -> ReaderT Connection m ()
-  runCommand = undefined
+  insert :: Post -> ReaderT Connection m ()
+  insert = undefined

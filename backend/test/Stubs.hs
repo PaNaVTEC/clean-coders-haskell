@@ -23,11 +23,11 @@ newtype TestM a = TestM {
 instance MonadDb User TestM where
   runQuery (QueryByName name) = gets $ filter (\user -> userName user == name) . fst
   runQuery (QueryById _userId) = gets $ filter (\user -> userId user == _userId) . fst
-  runCommand (InsertUser user) = modify $ \(users, posts) -> ((++ [user]) users, posts)
+  insert user = modify $ \(users, posts) -> ((++ [user]) users, posts)
 
 instance MonadDb Post TestM where
   runQuery (GetPostsByUserId _userId) = gets $ filter (\post -> postUserId post == _userId) . snd
-  runCommand _ = undefined
+  insert _ = undefined
 
 instance MonadIdGenerator TestM where
   generateUUID = return nilUUID
