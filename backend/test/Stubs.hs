@@ -20,14 +20,18 @@ newtype TestM a = TestM {
     runTestM :: WriterT [String] (StateT GlobalState Handler) a
 } deriving (Functor, Applicative, Monad, MonadIO, MonadState GlobalState, MonadError ServantErr)
 
-instance MonadDb User TestM where
-  runQuery (QueryByName name) = gets $ filter (\user -> userName user == name) . fst
-  runQuery (QueryById _userId) = gets $ filter (\user -> userId user == _userId) . fst
-  insert user = modify $ \(users, posts) -> ((++ [user]) users, posts)
+instance MonadDbRead User UserDbQueries TestM where
+  runQuery (UserByName name) = gets $ filter (\user -> userName user == name) . fst
+  runQuery (UserById _userId) = gets $ filter (\user -> userId user == _userId) . fst
 
-instance MonadDb Post TestM where
-  runQuery (GetPostsByUserId _userId) = gets $ filter (\post -> postUserId post == _userId) . snd
-  insert _ = undefined
+instance MonadDbWrite UserDbWrites TestM where
+  runCommand (InsertUser user) = modify $ \(users, posts) -> ((++ [user]) users, posts)
+
+instance MonadDbRead Post PostDbQueries TestM where
+  runQuery (PostsByUserId _userId) = gets $ filter (\post -> postUserId post == _userId) . snd
+
+instance MonadDbWrite PostDbWrites TestM where
+  runCommand _ = undefined
 
 instance MonadIdGenerator TestM where
   generateUUID = return nilUUID

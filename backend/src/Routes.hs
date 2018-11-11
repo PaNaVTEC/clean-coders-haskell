@@ -27,7 +27,20 @@ import           UsersService               (RegisterUserError (..),
 
 newtype AppM a = AppM {
   runAppM :: LoggingT (ReaderT Connection Handler) a
-} deriving (Functor, Applicative, Monad, MonadIO, MonadLogger, MonadReader Connection, MonadDb User, MonadDb Post, MonadError ServantErr, MonadIdGenerator)
+} deriving (
+  Functor,
+  Applicative,
+  Monad,
+  MonadIO,
+  MonadLogger,
+  MonadReader Connection,
+  MonadDbRead User UserDbQueries,
+  MonadDbWrite UserDbWrites,
+  MonadDbRead Post PostDbQueries,
+  MonadDbWrite PostDbWrites,
+  MonadError ServantErr,
+  MonadIdGenerator
+  )
 
 data RegisterBody = RegisterBody {
   bodyUserName :: Text,
@@ -68,10 +81,10 @@ type APIEndpoints =
   "users" :> ReqBody '[JSON] RegisterBody :> PostCreated '[JSON] ApiUser
   :<|> "users" :> Capture "userId" UUID :> "wall" :> Get '[JSON] [ApiPost]
 
-routes :: (MonadLogger m, MonadDb User m, MonadDb Post m, MonadIdGenerator m, MonadError ServantErr m) => ServerT APIEndpoints m
+routes :: (MonadLogger m, UserMonadDb m, PostMonadDb m, MonadIdGenerator m, MonadError ServantErr m) => ServerT APIEndpoints m
 routes = registerUserRoute :<|> userWallRoute
 
-userWallRoute :: (MonadDb User m, MonadDb Post m, MonadError ServantErr m) => UUID -> m [ApiPost]
+userWallRoute :: (UserMonadDb m, PostMonadDb m, MonadError ServantErr m) => UUID -> m [ApiPost]
 userWallRoute _userId = do
   ei <- getPostsByUserId (UserId _userId)
   either throwPostsError (return . postsToApi) ei
@@ -90,7 +103,7 @@ userWallRoute _userId = do
       err404
       {errBody = "User id does not exist."}
 
-registerUserRoute :: (MonadLogger m, MonadDb User m, MonadIdGenerator m, MonadError ServantErr m) => RegisterBody -> m ApiUser
+registerUserRoute :: (MonadLogger m, UserMonadDb m, MonadIdGenerator m, MonadError ServantErr m) => RegisterBody -> m ApiUser
 registerUserRoute body = do
   ei <- registerUser (registerBody' body)
   either throwRegisterError (return . userToApi) ei

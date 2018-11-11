@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds            #-}
 {-# LANGUAGE DefaultSignatures          #-}
 {-# LANGUAGE DeriveGeneric              #-}
 {-# LANGUAGE FlexibleContexts           #-}
@@ -5,7 +6,6 @@
 {-# LANGUAGE GADTs                      #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE InstanceSigs               #-}
-{-# LANGUAGE KindSignatures             #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE OverloadedStrings          #-}
 
@@ -14,6 +14,7 @@ module Data where
 import           Control.Monad.Except
 import           Control.Monad.Logger
 import           Control.Monad.Reader
+import           Data.Maybe                           (listToMaybe)
 import           Data.Text                            (Text)
 import           Data.Time
 import           Database.PostgreSQL.Simple
@@ -52,49 +53,65 @@ data Post = Post {
 } deriving (Eq, Show, Generic)
 instance FromRow Post where
 
-data DbQueries =
-  QueryByName UserName
-  | QueryById UserId
-  | GetPostsByUserId UserId deriving Show
+type MonadDb a b c m = (MonadDbRead a b m, MonadDbWrite c m)
 
-class Monad m => MonadDb a (m :: * -> *) where
-   runQuery :: DbQueries -> m [a]
+class Monad m => MonadDbWrite a m where
+  runCommand :: a -> m ()
 
-   insert :: a -> m ()
+  default runCommand :: (MonadDbWrite a m', MonadTrans t, t m' a ~ m a) => a -> m ()
+  runCommand a = lift $ runCommand a
 
-   default runQuery :: (MonadDb a m', MonadTrans t, t m' a ~ m a) => DbQueries -> m [a]
-   runQuery q = lift $ runQuery q
+class Monad m => MonadDbRead a b m where
+  runQuery :: b -> m [a]
 
-   default insert :: (MonadDb a m', MonadTrans t, t m' a ~ m a) => a -> m ()
-   insert = lift . insert
+  runOne :: b -> m (Maybe a)
+  runOne b = listToMaybe <$> runQuery b
 
-instance MonadDb a m => MonadDb a (ExceptT a m)
-instance MonadDb a m => MonadDb a (LoggingT m)
+  default runQuery :: (MonadDbRead a b m', MonadTrans t, t m' a ~ m a) => b -> m [a]
+  runQuery = lift . runQuery
 
-instance MonadIO m => MonadDb User (ReaderT Connection m) where
-  runQuery :: DbQueries -> ReaderT Connection m [User]
+instance MonadDbRead a b m=> MonadDbRead a b (ExceptT a m)
+instance MonadDbRead a b m=> MonadDbRead a b (LoggingT m)
+
+instance MonadDbWrite a m => MonadDbWrite a (ExceptT a m)
+instance MonadDbWrite a m => MonadDbWrite a (LoggingT m)
+
+data UserDbQueries =
+  UserByName UserName
+  | UserById UserId
+
+type UserMonadDb m = MonadDb User UserDbQueries UserDbWrites m
+instance MonadIO m => MonadDbRead User UserDbQueries (ReaderT Connection m) where
+  runQuery :: UserDbQueries -> ReaderT Connection m [User]
   runQuery q = do
     conn <- ask
     liftIO $ toSql conn q
     where
-      toSql :: Connection -> DbQueries -> IO [User]
-      toSql conn (QueryByName (UserName n)) = query conn "SELECT * FROM users WHERE userName = ?" [n]
-      toSql conn (QueryById (UserId n)) = query conn "SELECT * FROM users WHERE userId = ?" [n]
+      toSql :: Connection -> UserDbQueries -> IO [User]
+      toSql conn (UserByName (UserName n)) = query conn "SELECT * FROM users WHERE userName = ?" [n]
+      toSql conn (UserById (UserId n)) = query conn "SELECT * FROM users WHERE userId = ?" [n]
 
-  insert :: User -> ReaderT Connection m ()
-  insert user = do
+data UserDbWrites = InsertUser User
+instance MonadIO m => MonadDbWrite UserDbWrites (ReaderT Connection m) where
+  runCommand :: UserDbWrites -> ReaderT Connection m ()
+  runCommand (InsertUser user) = do
     conn <- ask
     _ <- liftIO $ execute conn "INSERT INTO users VALUES (?, ?, ?, ?)" (userId user, userName user, about user, password user)
     return ()
 
-instance MonadIO m => MonadDb Post (ReaderT Connection m) where
-  runQuery :: DbQueries -> ReaderT Connection m [Post]
+data PostDbQueries = PostsByUserId UserId
+type PostMonadDb m = MonadDb Post PostDbQueries PostDbWrites m
+instance MonadIO m => MonadDbRead Post PostDbQueries (ReaderT Connection m) where
+  runQuery :: PostDbQueries -> ReaderT Connection m [Post]
   runQuery q = do
     conn <- ask
     liftIO $ toSql conn q
     where
-      toSql :: Connection -> DbQueries -> IO [Post]
-      toSql conn (GetPostsByUserId (UserId n)) = query conn "SELECT * FROM posts WHERE userId = ?" [n]
+      toSql :: Connection -> PostDbQueries -> IO [Post]
+      toSql conn (PostsByUserId (UserId n)) = query conn "SELECT * FROM posts WHERE userId = ?" [n]
 
-  insert :: Post -> ReaderT Connection m ()
-  insert = undefined
+data PostDbWrites = InsertPost
+
+instance MonadIO m => MonadDbWrite PostDbWrites (ReaderT Connection m) where
+  runCommand :: PostDbWrites -> ReaderT Connection m ()
+  runCommand = undefined
