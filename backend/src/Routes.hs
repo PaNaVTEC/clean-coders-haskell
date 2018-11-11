@@ -20,6 +20,7 @@ import           Data.Time                  (UTCTime)
 import           Database.PostgreSQL.Simple
 import           GHC.Generics
 import           IdGenerator
+import           Models
 import           PostsService
 import           Servant                    hiding (Post)
 import           UsersService               (RegisterUserError (..),

@@ -9,7 +9,6 @@ module ServantSpec (main, spec) where
 
 import           Control.Monad.State   (evalStateT)
 import           Control.Monad.Writer
-import           Data
 import qualified Data.ByteString.Char8 as BS8
 import           Data.ByteString.Lazy
 import           Data.Text             (Text)
@@ -17,6 +16,7 @@ import           Data.Time             (UTCTime)
 import           Data.Time.Clock.POSIX
 import           IdGenerator
 import           Lib
+import           Models
 import           Network.Wai.Test      (SResponse (..))
 import           Servant               (Application, Handler)
 import           Stubs

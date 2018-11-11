@@ -13,6 +13,7 @@ import           Control.Monad.Writer
 import           Data
 import           Data.List                 (filter)
 import           IdGenerator
+import           Models
 import           Servant                   (Handler, ServantErr)
 
 type GlobalState = ([User], [Post])

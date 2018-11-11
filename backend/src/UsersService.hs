@@ -6,6 +6,7 @@ module UsersService where
 import           Data
 import           Data.Maybe  (fromMaybe, listToMaybe, maybe)
 import           IdGenerator
+import           Models
 
 type RegisterUserRequest = (UserName, Password, About)
 data RegisterUserError = UsernameAlreadyInUse | UserNotInserted

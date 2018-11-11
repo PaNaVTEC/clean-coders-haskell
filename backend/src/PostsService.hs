@@ -4,6 +4,7 @@ module PostsService where
 
 import           Data
 import           Data.Maybe (listToMaybe, maybe)
+import           Models
 
 data GetWallError = UserIdDoesNotExist
 

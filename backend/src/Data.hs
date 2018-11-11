@@ -1,57 +1,20 @@
-{-# LANGUAGE ConstraintKinds            #-}
-{-# LANGUAGE DefaultSignatures          #-}
-{-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GADTs                      #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE InstanceSigs               #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE OverloadedStrings          #-}
+{-# LANGUAGE ConstraintKinds       #-}
+{-# LANGUAGE DefaultSignatures     #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE GADTs                 #-}
+{-# LANGUAGE InstanceSigs          #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
 
 module Data where
 
 import           Control.Monad.Except
 import           Control.Monad.Logger
 import           Control.Monad.Reader
-import           Data.Maybe                           (listToMaybe)
-import           Data.Text                            (Text)
-import           Data.Time
+import           Data.Maybe                 (listToMaybe)
 import           Database.PostgreSQL.Simple
-import           Database.PostgreSQL.Simple.FromField
-import           Database.PostgreSQL.Simple.ToField
-import           Database.PostgreSQL.Simple.ToRow
-import           GHC.Generics
-import           IdGenerator
-
-newtype UserId = UserId { unUserId :: UUID } deriving (Eq, Show, Generic, FromField, ToField)
-newtype UserName = UserName { unUserName :: Text } deriving (Eq, Show, Generic, FromField, ToField)
-newtype About = About { unAbout :: Text } deriving (Eq, Show, Generic, FromField, ToField)
-newtype Password = Password { unPassword :: Text } deriving (Eq, Show, Generic, FromField, ToField)
-
-data User = User {
-  userId   :: UserId,
-  userName :: UserName,
-  about    :: About,
-  password :: Password
-} deriving (Eq, Show, Generic)
-instance FromRow User
-
-instance ToRow User where
-  toRow user = [
-     toField . userId $ user,
-     toField . userName $ user,
-     toField . about $ user]
-
-newtype PostId = PostId { unPostId :: UUID } deriving (Eq, Show, Generic, FromField, ToField)
-
-data Post = Post {
-  postId     :: PostId,
-  postUserId :: UserId,
-  postText   :: Text,
-  postDate   :: UTCTime
-} deriving (Eq, Show, Generic)
-instance FromRow Post where
+import           Models
 
 type MonadDb a b c m = (MonadDbRead a b m, MonadDbWrite c m)
 
