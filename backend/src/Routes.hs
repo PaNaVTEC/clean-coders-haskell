@@ -84,7 +84,7 @@ type APIEndpoints =
 routes :: (MonadLogger m, UserMonadDb m, PostMonadDb m, MonadIdGenerator m, MonadError ServantErr m) => ServerT APIEndpoints m
 routes = registerUserRoute :<|> userWallRoute
 
-userWallRoute :: (UserMonadDb m, PostMonadDb m, MonadError ServantErr m) => UUID -> m [ApiPost]
+userWallRoute :: (UserMonadDbRead m, PostMonadDbRead m, MonadError ServantErr m) => UUID -> m [ApiPost]
 userWallRoute _userId = do
   ei <- getPostsByUserId (UserId _userId)
   either throwPostsError (return . postsToApi) ei

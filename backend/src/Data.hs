@@ -81,6 +81,8 @@ data UserDbQueries =
   | UserById UserId
 
 type UserMonadDb m = MonadDb User UserDbQueries UserDbWrites m
+type UserMonadDbRead m = MonadDbRead User UserDbQueries m
+type UserMonadDbWrite m = MonadDbWrite UserDbWrites m
 instance MonadIO m => MonadDbRead User UserDbQueries (ReaderT Connection m) where
   runQuery :: UserDbQueries -> ReaderT Connection m [User]
   runQuery q = do
@@ -101,6 +103,8 @@ instance MonadIO m => MonadDbWrite UserDbWrites (ReaderT Connection m) where
 
 data PostDbQueries = PostsByUserId UserId
 type PostMonadDb m = MonadDb Post PostDbQueries PostDbWrites m
+type PostMonadDbRead m = MonadDbRead Post PostDbQueries m
+type PostMonadDbWrite m = MonadDbWrite PostDbWrites m
 instance MonadIO m => MonadDbRead Post PostDbQueries (ReaderT Connection m) where
   runQuery :: PostDbQueries -> ReaderT Connection m [Post]
   runQuery q = do

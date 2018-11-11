@@ -15,7 +15,7 @@ registerUser body@(_userName, _, _) = do
   mu <- queryUserByName _userName
   maybe (Right <$> registerUser' body) (const . return . Left $ UsernameAlreadyInUse) mu
 
-queryUserByName :: UserMonadDb m => UserName -> m (Maybe User)
+queryUserByName :: UserMonadDbRead m => UserName -> m (Maybe User)
 queryUserByName _userName = listToMaybe <$> runQuery (UserByName _userName)
 
 registerUser' :: (MonadIdGenerator m, UserMonadDb m) => RegisterUserRequest -> m User
