@@ -22,14 +22,14 @@ newtype TestM a = TestM {
 } deriving (Functor, Applicative, Monad, MonadIO, MonadState GlobalState, MonadError ServantErr)
 
 instance MonadDbRead User UserDbQueries TestM where
-  runQuery (UserByName name) = gets $ filter (\user -> userName user == name) . fst
-  runQuery (UserById _userId) = gets $ filter (\user -> userId user == _userId) . fst
+  queryMany (UserByName name) = gets $ filter (\user -> userName user == name) . fst
+  queryMany (UserById _userId) = gets $ filter (\user -> userId user == _userId) . fst
 
 instance MonadDbWrite UserDbWrites TestM where
   runCommand (InsertUser user) = modify $ \(users, posts) -> ((++ [user]) users, posts)
 
 instance MonadDbRead Post PostDbQueries TestM where
-  runQuery (PostsByUserId _userId) = gets $ filter (\post -> postUserId post == _userId) . snd
+  queryMany (PostsByUserId _userId) = gets $ filter (\post -> postUserId post == _userId) . snd
 
 instance MonadDbWrite PostDbWrites TestM where
   runCommand _ = undefined

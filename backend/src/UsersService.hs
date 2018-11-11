@@ -4,7 +4,7 @@
 module UsersService where
 
 import           Data
-import           Data.Maybe  (fromMaybe, listToMaybe, maybe)
+import           Data.Maybe  (fromMaybe, maybe)
 import           IdGenerator
 import           Models
 
@@ -17,7 +17,7 @@ registerUser body@(_userName, _, _) = do
   maybe (Right <$> registerUser' body) (const . return . Left $ UsernameAlreadyInUse) mu
 
 queryUserByName :: UserMonadDbRead m => UserName -> m (Maybe User)
-queryUserByName _userName = listToMaybe <$> runQuery (UserByName _userName)
+queryUserByName _userName = queryOne (UserByName _userName)
 
 registerUser' :: (MonadIdGenerator m, UserMonadDb m) => RegisterUserRequest -> m User
 registerUser' (_userName, _password, _about) = do
