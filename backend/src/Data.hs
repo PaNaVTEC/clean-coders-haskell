@@ -59,7 +59,7 @@ instance MonadIO m => MonadDbWrite UserDbWrites (ReaderT Connection m) where
     _ <- liftIO $ execute conn "INSERT INTO users VALUES (?, ?, ?, ?)" (userId user, userName user, about user, password user)
     return ()
 
-data PostDbQueries = PostsByUserId UserId
+data PostDbQueries = PostsByUserId UserId | PostById PostId
 instance MonadIO m => MonadDbRead Post PostDbQueries (ReaderT Connection m) where
   queryMany :: PostDbQueries -> ReaderT Connection m [Post]
   queryMany q = do
@@ -69,7 +69,7 @@ instance MonadIO m => MonadDbRead Post PostDbQueries (ReaderT Connection m) wher
       toSql :: Connection -> PostDbQueries -> IO [Post]
       toSql conn (PostsByUserId (UserId n)) = query conn "SELECT * FROM posts WHERE userId = ?" [n]
 
-data PostDbWrites = InsertPost
+data PostDbWrites = InsertPost Post
 instance MonadIO m => MonadDbWrite PostDbWrites (ReaderT Connection m) where
   runCommand :: PostDbWrites -> ReaderT Connection m ()
   runCommand = undefined

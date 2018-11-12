@@ -21,7 +21,8 @@ import           Database.PostgreSQL.Simple
 import           GHC.Generics
 import           IdGenerator
 import           Models
-import           PostsService
+import           PostsService               (GetWallError (..),
+                                             getPostsByUserId, postToTimeline)
 import           Servant                    hiding (Post)
 import           UsersService               (RegisterUserError (..),
                                              registerUser)
@@ -47,6 +48,10 @@ data RegisterBody = RegisterBody {
   bodyUserName :: Text,
   bodyPassword :: Text,
   bodyAbout    :: Text
+} deriving (Show, Generic)
+
+data PostMessageBody = PostMessageBody {
+  postMessageText :: Text
 } deriving (Show, Generic)
 
 data ApiUser = ApiUser {
@@ -78,12 +83,30 @@ instance ToJSON ApiUser where
 instance FromJSON RegisterBody where
   parseJSON = withObject "Person" $ \v -> RegisterBody <$> v.: "username" <*> v.: "password" <*> v.: "about"
 
+instance FromJSON PostMessageBody where
+  parseJSON = withObject "" $ \v -> PostMessageBody <$> v.: "text"
+
 type APIEndpoints =
   "users" :> ReqBody '[JSON] RegisterBody :> PostCreated '[JSON] ApiUser
   :<|> "users" :> Capture "userId" UUID :> "wall" :> Get '[JSON] [ApiPost]
+  :<|> "users" :> Capture "userId" UUID :> "timeline" :> ReqBody '[JSON] PostMessageBody :> PostCreated '[JSON] ApiPost
 
 routes :: (MonadLogger m, UserMonadDb m, PostMonadDb m, MonadIdGenerator m, MonadError ServantErr m) => ServerT APIEndpoints m
-routes = registerUserRoute :<|> userWallRoute
+routes = registerUserRoute :<|> userWallRoute :<|> postMessage
+
+postMessage :: UUID -> PostMessageBody -> m ApiPost
+postMessage _userId _body = do
+  ep <- postToTimeline (UserId _userId) (postMessageText _body)
+  either throwPostsError (return . postToApi) ep
+  where
+    throwPostsError = undefined
+
+postToApi :: Post -> ApiPost
+postToApi _post = ApiPost
+  (unUserId $ postUserId _post)
+  (unPostId $ postId _post)
+  (postText _post)
+  (postDate _post)
 
 userWallRoute :: (UserMonadDbRead m, PostMonadDbRead m, MonadError ServantErr m) => UUID -> m [ApiPost]
 userWallRoute _userId = do
@@ -92,13 +115,6 @@ userWallRoute _userId = do
   where
     postsToApi :: [Post] -> [ApiPost]
     postsToApi = fmap postToApi
-
-    postToApi :: Post -> ApiPost
-    postToApi _post = ApiPost
-      _userId
-      (unPostId $ postId _post)
-      (postText _post)
-      (postDate _post)
 
     throwPostsError UserIdDoesNotExist = throwError
       err404

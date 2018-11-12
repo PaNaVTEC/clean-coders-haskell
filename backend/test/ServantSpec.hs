@@ -57,6 +57,22 @@ spec =
     it "returns 404 for a bad request" $ do
       getWallOf "incorrect uuid" `shouldRespondWith` 404
 
+  describe "User timeline" $ do
+
+    it "posts a new message in the user timeline" $ do
+      postMessage "00000000-0000-0000-0000-000000000000" [json|{text:"A new post"}|]
+        `shouldRespondWith`
+        [json|{
+             userId: "00000000-0000-0000-0000-000000000000",
+             postId: "00000000-0000-0000-0000-000000000001",
+             text: "A new post",
+             datetime: "1970-01-01T00:00:00Z"
+        }|] {matchStatus = 201}
+
+postMessage :: String -> ByteString -> WaiSession SResponse
+postMessage _userId = request "POST" (BS8.pack $ "/users/" ++ _userId ++ "/timeline") headers
+  where headers = [("Content-Type", "application/json")]
+
 getWallOf :: String -> WaiSession SResponse
 getWallOf _userId = request "GET" (BS8.pack $ "/users/" ++ _userId ++ "/wall")  [] ""
 
