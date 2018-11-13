@@ -6,14 +6,16 @@
 {-# LANGUAGE InstanceSigs          #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE QuasiQuotes           #-}
 
 module Data where
 
 import           Control.Monad.Except
 import           Control.Monad.Logger
 import           Control.Monad.Reader
-import           Data.Maybe                 (listToMaybe)
-import           Database.PostgreSQL.Simple (Connection, execute, query)
+import           Data.Maybe                       (listToMaybe)
+import           Database.PostgreSQL.Simple       (Connection, execute, query)
+import           Database.PostgreSQL.Simple.SqlQQ
 import           Models
 
 class Monad m => MonadDbWrite a m where
@@ -72,7 +74,10 @@ instance MonadIO m => MonadDbRead Post PostDbQueries (ReaderT Connection m) wher
 data PostDbWrites = InsertPost Post
 instance MonadIO m => MonadDbWrite PostDbWrites (ReaderT Connection m) where
   runCommand :: PostDbWrites -> ReaderT Connection m ()
-  runCommand = undefined
+  runCommand (InsertPost _post) = do
+    conn <- ask
+    _ <- liftIO $ execute conn [sql|INSERT INTO posts VALUES (?,?,?,?)|] (postId _post, postUserId _post, postText _post, postDate _post)
+    return ()
 
 type MonadDb a b c m = (MonadDbRead a b m, MonadDbWrite c m)
 

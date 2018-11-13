@@ -29,22 +29,27 @@ main = hspec spec
 
 spec :: Spec
 spec =
-  with (anAppWith ([anUser nilUUID "used" "" ""], [aPost nilUUID nilUUID "A new post" (posixSecondsToUTCTime 0) ])) $ do
+  let state = GlobalState
+        [anUser nilUUID "used" "" ""]
+        [aPost nilUUID nilUUID "A new post" (posixSecondsToUTCTime 0)]
+        (posixSecondsToUTCTime 0)
+  in
+  with (anAppWith state) $ do
   describe "Register user" $ do
 
-    it "fail with 400 if username is in use" $ do
+    it "fail with 400 if username is in use" $
       postRegister [json|{username: "used", password: "", about: ""}|]
         `shouldRespondWith`
         "Username already in use." {matchStatus = 400}
 
-    it "returns a new user when the username does not exist" $ do
+    it "returns a new user when the username does not exist" $
        postRegister [json|{username: "aUser", password: "pass", about: "About"}|]
          `shouldRespondWith`
          [json|{id: "00000000-0000-0000-0000-000000000000", username: "aUser", about: "About"}|] {matchStatus = 201}
 
   describe "User wall" $ do
 
-    it "returns the wall for the specified user" $ do
+    it "returns the wall for the specified user" $
       getWallOf "00000000-0000-0000-0000-000000000000"
         `shouldRespondWith`
         [json|[{
@@ -54,18 +59,18 @@ spec =
              datetime: "1970-01-01T00:00:00Z"
         }]|] {matchStatus = 200}
 
-    it "returns 404 for a bad request" $ do
+    it "returns 404 for a bad request" $
       getWallOf "incorrect uuid" `shouldRespondWith` 404
 
   describe "User timeline" $ do
 
     it "posts a new message in the user timeline" $ do
-      postMessage "00000000-0000-0000-0000-000000000000" [json|{text:"A new post"}|]
+      postMessage "00000000-0000-0000-0000-000000000000" [json|{text:"Another post"}|]
         `shouldRespondWith`
         [json|{
              userId: "00000000-0000-0000-0000-000000000000",
              postId: "00000000-0000-0000-0000-000000000001",
-             text: "A new post",
+             text: "Another post",
              datetime: "1970-01-01T00:00:00Z"
         }|] {matchStatus = 201}
 
@@ -81,10 +86,10 @@ postRegister = request "POST" "/users" headers
   where headers = [("Content-Type", "application/json")]
 
 anAppWith :: Monad m => GlobalState -> m Application
-anAppWith users = return $ app nt
+anAppWith _users = return $ app nt
   where
     nt :: TestM a -> Handler a
-    nt appM = evalStateT (fst <$> runWriterT (runTestM appM)) users
+    nt appM = evalStateT (fst <$> runWriterT (runTestM appM)) _users
 
 anUser :: UUID -> Text -> Text -> Text -> User
 anUser _id _name _about _password = User

@@ -11,7 +11,8 @@ import           Control.Monad.Logger
 import           Control.Monad.Reader
 import           Data
 import           Database.PostgreSQL.Simple
-import           IdGenerator
+import           IdGenerator                          (MonadIdGenerator)
+import           MonadTime                            (MonadTime)
 import           Network.Wai.Handler.Warp
 import           Network.Wai.Middleware.RequestLogger
 import           Routes
@@ -19,7 +20,7 @@ import           Servant                              (Application, Handler,
                                                        Proxy (..), ServantErr,
                                                        hoistServer, serve)
 
-app :: (MonadLogger m, UserMonadDb m, PostMonadDb m, MonadError ServantErr m, MonadIdGenerator m) => (forall a. m a -> Handler a) -> Application
+app :: (MonadLogger m, UserMonadDb m, PostMonadDb m, MonadError ServantErr m, MonadIdGenerator m, MonadTime m) => (forall a. m a -> Handler a) -> Application
 app nt = logStdoutDev $ serve proxy $ hoistServer proxy nt routes
   where proxy = Proxy :: Proxy APIEndpoints
 

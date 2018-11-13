@@ -1,12 +1,13 @@
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module PostsService where
+module PostsService (GetWallError(..), getPostsByUserId, postToTimeline, PostToTimelineError(..), UserIdDoesNotExist(..)) where
 
 import           Data
 import           Data.Text
 import           IdGenerator
 import           Models
+import           MonadTime   (MonadTime, currentUTCTime)
 
 data UserIdDoesNotExist = UserIdDoesNotExist
 data GetWallError = GetWallError UserIdDoesNotExist
@@ -24,11 +25,11 @@ getPostsByUserId _userId = do
 getPosts :: PostMonadDbRead m => UserId -> m [Post]
 getPosts _userId = queryMany $ PostsByUserId _userId
 
-data PostTotimelineError = PostTotimelineError UserIdDoesNotExist | MessageNotPosted
+data PostToTimelineError = PostTotimelineError UserIdDoesNotExist | MessageNotPosted
 
 postToTimeline ::
-  (UserMonadDbRead m, PostMonadDb m, MonadIdGenerator m) =>
-  UserId -> Text -> m (Either PostTotimelineError Post)
+  (UserMonadDbRead m, PostMonadDb m, MonadIdGenerator m, MonadTime m) =>
+  UserId -> Text -> m (Either PostToTimelineError Post)
 postToTimeline _userId _text = do
   (mu :: Maybe User) <- queryOne (UserById _userId)
   maybe
@@ -38,12 +39,13 @@ postToTimeline _userId _text = do
   where
     saveMessage = do
       _postId <- PostId <$> generateUUID
-      runCommand $ InsertPost (Post _postId _userId _text _)
+      now <- currentUTCTime
+      runCommand $ InsertPost (Post _postId _userId _text now)
       return _postId
 
     queryMessage _postId = do
       mp <- queryOne (PostById _postId)
       return $ maybe
-        (Left $ MessageNotPosted)
+        (Left MessageNotPosted)
         Right
         mp

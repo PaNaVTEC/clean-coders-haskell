@@ -5,7 +5,7 @@
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE TypeFamilies               #-}
 
-module IdGenerator (nilUUID, MonadIdGenerator(..), UUID) where
+module IdGenerator (nilUUID, MonadIdGenerator(..), UUID, fromText) where
 
 import           Control.Monad.Except
 import           Control.Monad.Logger
@@ -48,3 +48,6 @@ toUUID = UUID . U.toText
 
 nilUUID :: UUID
 nilUUID = toUUID U.nil
+
+fromText :: Text -> Maybe UUID
+fromText x = toUUID <$> U.fromText x

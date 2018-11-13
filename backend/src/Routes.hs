@@ -21,7 +21,10 @@ import           Database.PostgreSQL.Simple
 import           GHC.Generics
 import           IdGenerator
 import           Models
+import           MonadTime                  (MonadTime)
 import           PostsService               (GetWallError (..),
+                                             PostToTimelineError (..),
+                                             UserIdDoesNotExist (..),
                                              getPostsByUserId, postToTimeline)
 import           Servant                    hiding (Post)
 import           UsersService               (RegisterUserError (..),
@@ -41,7 +44,8 @@ newtype AppM a = AppM {
   MonadDbRead Post PostDbQueries,
   MonadDbWrite PostDbWrites,
   MonadError ServantErr,
-  MonadIdGenerator
+  MonadIdGenerator,
+  MonadTime
   )
 
 data RegisterBody = RegisterBody {
@@ -91,10 +95,10 @@ type APIEndpoints =
   :<|> "users" :> Capture "userId" UUID :> "wall" :> Get '[JSON] [ApiPost]
   :<|> "users" :> Capture "userId" UUID :> "timeline" :> ReqBody '[JSON] PostMessageBody :> PostCreated '[JSON] ApiPost
 
-routes :: (MonadLogger m, UserMonadDb m, PostMonadDb m, MonadIdGenerator m, MonadError ServantErr m) => ServerT APIEndpoints m
+routes :: (MonadLogger m, UserMonadDb m, PostMonadDb m, MonadIdGenerator m, MonadError ServantErr m, MonadTime m) => ServerT APIEndpoints m
 routes = registerUserRoute :<|> userWallRoute :<|> postMessage
 
-postMessage :: UUID -> PostMessageBody -> m ApiPost
+postMessage :: (UserMonadDbRead m, PostMonadDb m, MonadIdGenerator m, MonadTime m) => UUID -> PostMessageBody -> m ApiPost
 postMessage _userId _body = do
   ep <- postToTimeline (UserId _userId) (postMessageText _body)
   either throwPostsError (return . postToApi) ep
@@ -116,7 +120,7 @@ userWallRoute _userId = do
     postsToApi :: [Post] -> [ApiPost]
     postsToApi = fmap postToApi
 
-    throwPostsError UserIdDoesNotExist = throwError
+    throwPostsError (GetWallError UserIdDoesNotExist) = throwError
       err404
       {errBody = "User id does not exist."}
 
