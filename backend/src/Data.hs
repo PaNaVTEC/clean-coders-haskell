@@ -50,15 +50,15 @@ instance MonadIO m => MonadDbRead User UserDbQueries (ReaderT Connection m) wher
     liftIO $ toSql conn q
     where
       toSql :: Connection -> UserDbQueries -> IO [User]
-      toSql conn (UserByName (UserName n)) = query conn "SELECT * FROM users WHERE userName = ?" [n]
-      toSql conn (UserById (UserId n)) = query conn "SELECT * FROM users WHERE userId = ?" [n]
+      toSql conn (UserByName (UserName n)) = query conn [sql|SELECT * FROM users WHERE userName = ?|] [n]
+      toSql conn (UserById (UserId n)) = query conn [sql|SELECT * FROM users WHERE userId = ?|] [n]
 
 data UserDbWrites = InsertUser User
 instance MonadIO m => MonadDbWrite UserDbWrites (ReaderT Connection m) where
   runCommand :: UserDbWrites -> ReaderT Connection m ()
   runCommand (InsertUser user) = do
     conn <- ask
-    _ <- liftIO $ execute conn "INSERT INTO users VALUES (?, ?, ?, ?)" (userId user, userName user, about user, password user)
+    _ <- liftIO $ execute conn [sql|INSERT INTO users VALUES (?, ?, ?, ?)|] (userId user, userName user, about user, password user)
     return ()
 
 data PostDbQueries = PostsByUserId UserId | PostById PostId
