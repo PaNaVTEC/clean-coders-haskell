@@ -30,6 +30,7 @@ main = hspec spec
 spec :: Spec
 spec =
   let state = GlobalState
+        0
         [anUser nilUUID "used" "" ""]
         [aPost nilUUID nilUUID "A new post" (posixSecondsToUTCTime 0)]
         (posixSecondsToUTCTime 0)
@@ -45,7 +46,7 @@ spec =
     it "returns a new user when the username does not exist" $
        postRegister [json|{username: "aUser", password: "pass", about: "About"}|]
          `shouldRespondWith`
-         [json|{id: "00000000-0000-0000-0000-000000000000", username: "aUser", about: "About"}|] {matchStatus = 201}
+         [json|{id: "00000000-0000-0000-0000-000000000001", username: "aUser", about: "About"}|] {matchStatus = 201}
 
   describe "User wall" $ do
 
@@ -62,9 +63,9 @@ spec =
     it "returns 404 for a bad request" $
       getWallOf "incorrect uuid" `shouldRespondWith` 404
 
-  describe "User timeline" $ do
+  describe "User timeline" $
 
-    it "posts a new message in the user timeline" $ do
+    it "posts a new message in the user timeline" $
       postMessage "00000000-0000-0000-0000-000000000000" [json|{text:"Another post"}|]
         `shouldRespondWith`
         [json|{

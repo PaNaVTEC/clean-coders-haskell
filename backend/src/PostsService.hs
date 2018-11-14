@@ -1,7 +1,12 @@
 {-# LANGUAGE FlexibleContexts    #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module PostsService (GetWallError(..), getPostsByUserId, postToTimeline, PostToTimelineError(..), UserIdDoesNotExist(..)) where
+module PostsService (
+  GetWallError(..),
+  getPostsByUserId,
+  postToTimeline,
+  PostToTimelineError(..),
+  UserIdDoesNotExist(..)) where
 
 import           Data
 import           Data.Text

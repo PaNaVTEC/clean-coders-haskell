@@ -10,10 +10,8 @@ import           Control.Monad.Logger
 import           Control.Monad.State
 import           Control.Monad.Writer
 import           Data
-import           Data.Bifunctor            (first)
-import           Data.List                 (filter)
+import           Data.List                 (filter, intercalate)
 import           Data.Maybe                (fromMaybe)
-import           Data.Text                 (pack, unpack)
 import           Data.Time                 (UTCTime (..))
 import           IdGenerator
 import           Models
@@ -55,12 +53,24 @@ instance MonadDbWrite PostDbWrites TestM where
 instance MonadIdGenerator TestM where
   generateUUID = do
     modify $ \s -> s { uuidSeed = uuidSeed s + 1 }
-    gets $ \s -> fromMaybe nilUUID (fromText . pack . hyphenise . left32Pad . uuidSeed $ s)
-     where
-       hyphenise :: String -> String
-       hyphenise = _
-       left32Pad :: Integer -> String
-       left32Pad = printf "%032"
+    gets $ \s -> fromMaybe nilUUID (uuidFromInt . uuidSeed $ s)
+
+uuidFromInt :: Integer -> Maybe UUID
+uuidFromInt = fromString . hyphenise . left32Pad
+  where
+    hyphenise :: String -> String
+    hyphenise x = intercalate "-" (splitPlaces [8, 4, 4, 4, 12] x)
+
+    left32Pad :: Integer -> String
+    left32Pad = printf "%032d"
+
+splitPlaces :: [Int] -> String -> [String]
+splitPlaces = go []
+  where
+    go :: [String] -> [Int] -> String -> [String]
+    go acc _ ""          = acc
+    go acc [] _          = acc
+    go acc (p : ps) _str = go (acc ++ [take p _str]) ps (drop p _str)
 
 instance MonadLogger TestM where
   monadLoggerLog _ _ _ m = TestM $ tell [show $ toLogStr m]

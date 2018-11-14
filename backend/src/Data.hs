@@ -69,7 +69,8 @@ instance MonadIO m => MonadDbRead Post PostDbQueries (ReaderT Connection m) wher
     liftIO $ toSql conn q
     where
       toSql :: Connection -> PostDbQueries -> IO [Post]
-      toSql conn (PostsByUserId (UserId n)) = query conn "SELECT * FROM posts WHERE userId = ?" [n]
+      toSql conn (PostsByUserId (UserId n)) = query conn [sql|SELECT * FROM posts WHERE userId = ?"|] [n]
+      toSql conn (PostById (PostId n)) = query conn [sql|SELECT * FROM posts WHERE postId = ?|] [n]
 
 data PostDbWrites = InsertPost Post
 instance MonadIO m => MonadDbWrite PostDbWrites (ReaderT Connection m) where

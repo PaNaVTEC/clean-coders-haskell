@@ -5,14 +5,15 @@
 {-# LANGUAGE OverloadedStrings          #-}
 {-# LANGUAGE TypeFamilies               #-}
 
-module IdGenerator (nilUUID, MonadIdGenerator(..), UUID, fromText) where
+module IdGenerator (nilUUID, MonadIdGenerator(..), UUID, fromText, fromString) where
 
 import           Control.Monad.Except
 import           Control.Monad.Logger
 import           Control.Monad.Reader
 import           Data.Aeson.Types                     (FromJSON, ToJSON)
 import           Data.Text
-import qualified Data.UUID                            as U (UUID, fromText, nil,
+import qualified Data.UUID                            as U (UUID, fromString,
+                                                            fromText, nil,
                                                             toText)
 import           Data.UUID.V4                         (nextRandom)
 import           Database.PostgreSQL.Simple.FromField
@@ -25,7 +26,7 @@ newtype UUID = UUID {
 
 instance FromHttpApiData UUID where
   parseQueryParam :: Text -> Either Text UUID
-  parseQueryParam t = maybe (Left _error) (Right . toUUID) (U.fromText t)
+  parseQueryParam t = maybe (Left _error) Right (fromText t)
     where _error = "Not valid UUID"
 
 class Monad m => MonadIdGenerator m where
@@ -51,3 +52,6 @@ nilUUID = toUUID U.nil
 
 fromText :: Text -> Maybe UUID
 fromText x = toUUID <$> U.fromText x
+
+fromString :: String -> Maybe UUID
+fromString x = toUUID <$> U.fromString x
