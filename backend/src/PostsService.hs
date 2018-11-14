@@ -30,7 +30,7 @@ getPostsByUserId _userId = do
 getPosts :: PostMonadDbRead m => UserId -> m [Post]
 getPosts _userId = queryMany $ PostsByUserId _userId
 
-data PostToTimelineError = PostTotimelineError UserIdDoesNotExist | MessageNotPosted
+data PostToTimelineError = PostToTimelineError UserIdDoesNotExist | MessageNotPosted
 
 postToTimeline ::
   (UserMonadDbRead m, PostMonadDb m, MonadIdGenerator m, MonadTime m) =>
@@ -38,7 +38,7 @@ postToTimeline ::
 postToTimeline _userId _text = do
   (mu :: Maybe User) <- queryOne (UserById _userId)
   maybe
-    (return . Left $ PostTotimelineError UserIdDoesNotExist)
+    (return . Left $ PostToTimelineError UserIdDoesNotExist)
     (const $ queryMessage =<< saveMessage)
     mu
   where
@@ -48,9 +48,7 @@ postToTimeline _userId _text = do
       runCommand $ InsertPost (Post _postId _userId _text now)
       return _postId
 
-    queryMessage _postId = do
-      mp <- queryOne (PostById _postId)
-      return $ maybe
-        (Left MessageNotPosted)
-        Right
-        mp
+    queryMessage _postId = maybe
+      (Left MessageNotPosted)
+      Right
+      <$> queryOne (PostById _postId)

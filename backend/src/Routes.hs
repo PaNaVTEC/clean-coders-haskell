@@ -98,12 +98,18 @@ type APIEndpoints =
 routes :: (MonadLogger m, UserMonadDb m, PostMonadDb m, MonadIdGenerator m, MonadError ServantErr m, MonadTime m) => ServerT APIEndpoints m
 routes = registerUserRoute :<|> userWallRoute :<|> postMessage
 
-postMessage :: (UserMonadDbRead m, PostMonadDb m, MonadIdGenerator m, MonadTime m) => UUID -> PostMessageBody -> m ApiPost
+postMessage :: (UserMonadDbRead m, PostMonadDb m, MonadIdGenerator m, MonadTime m, MonadError ServantErr m) => UUID -> PostMessageBody -> m ApiPost
 postMessage _userId _body = do
   ep <- postToTimeline (UserId _userId) (postMessageText _body)
   either throwPostsError (return . postToApi) ep
   where
-    throwPostsError = undefined
+    throwPostsError (PostToTimelineError UserIdDoesNotExist) = throwError
+      err404
+      {errBody = "User id does not exist."}
+
+    throwPostsError MessageNotPosted = throwError
+      err404
+      {errBody = "The message has not been posted correctly."}
 
 postToApi :: Post -> ApiPost
 postToApi _post = ApiPost

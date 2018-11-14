@@ -63,7 +63,7 @@ spec =
     it "returns 404 for a bad request" $
       getWallOf "incorrect uuid" `shouldRespondWith` 404
 
-  describe "User timeline" $
+  describe "User timeline" $ do
 
     it "posts a new message in the user timeline" $
       postMessage "00000000-0000-0000-0000-000000000000" [json|{text:"Another post"}|]
@@ -74,6 +74,11 @@ spec =
              text: "Another post",
              datetime: "1970-01-01T00:00:00Z"
         }|] {matchStatus = 201}
+
+    it "does not post a message if it contains bad words" $
+      postMessage "00000000-0000-0000-0000-000000000000" [json|{text:"FUCK post"}|]
+        `shouldRespondWith`
+        "Post contains inappropriate language." {matchStatus = 400}
 
 postMessage :: String -> ByteString -> WaiSession SResponse
 postMessage _userId = request "POST" (BS8.pack $ "/users/" ++ _userId ++ "/timeline") headers
