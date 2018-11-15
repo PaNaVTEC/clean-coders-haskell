@@ -6,12 +6,14 @@
 
 module Lib ( startApp , app ) where
 
+import           Application
 import           Control.Monad.Error.Class
 import           Control.Monad.Logger
 import           Control.Monad.Reader
 import           Data
 import           Database.PostgreSQL.Simple
 import           IdGenerator                          (MonadIdGenerator)
+import           Models                               (ReadOnlyState (..))
 import           MonadTime                            (MonadTime)
 import           Network.Wai.Handler.Warp
 import           Network.Wai.Middleware.RequestLogger
@@ -25,17 +27,18 @@ app :: (MonadLogger m,
         PostMonadDb m,
         MonadError ServantErr m,
         MonadIdGenerator m,
-        MonadTime m) => (forall a. m a -> Handler a) -> Application
-app nt = logStdoutDev $ serve proxy $ hoistServer proxy nt routes
+        MonadTime m,
+        MonadReader ReadOnlyState m) => (forall a. AppInput -> m a -> Handler a) -> AppInput -> Application
+app nt _appInput = logStdoutDev $ serve proxy $ hoistServer proxy (nt _appInput) routes
   where proxy = Proxy :: Proxy APIEndpoints
 
 startApp :: IO ()
 startApp = do
   conn <- prodConn
-  run 4321 $ app (ntAppT conn)
+  run 4321 $ app (ntAppT conn) _
   where
-    ntAppT :: Connection -> AppM a -> Handler a
-    ntAppT conn appM = runReaderT (runStderrLoggingT (runAppM appM)) conn
+    ntAppT :: Connection -> AppInput -> AppM a -> Handler a
+    ntAppT conn _appInput appM = runReaderT (runStderrLoggingT (runAppM appM)) (ReadOnlyState conn _appInput)
 
 prodConn :: IO Connection
 prodConn = connect defaultConnectInfo

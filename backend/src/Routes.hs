@@ -1,23 +1,21 @@
-{-# LANGUAGE DataKinds                  #-}
-{-# LANGUAGE DeriveFunctor              #-}
-{-# LANGUAGE DeriveGeneric              #-}
-{-# LANGUAGE FlexibleContexts           #-}
-{-# LANGUAGE FlexibleInstances          #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE MultiParamTypeClasses      #-}
-{-# LANGUAGE OverloadedStrings          #-}
-{-# LANGUAGE TypeOperators              #-}
+{-# LANGUAGE DataKinds             #-}
+{-# LANGUAGE DeriveFunctor         #-}
+{-# LANGUAGE DeriveGeneric         #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE FlexibleInstances     #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE OverloadedStrings     #-}
+{-# LANGUAGE TypeOperators         #-}
 
-module Routes ( routes, APIEndpoints, AppM(..)) where
+module Routes ( routes, APIEndpoints, ) where
 
 import           Control.Monad.Error.Class
 import           Control.Monad.Logger
-import           Control.Monad.Reader
+import           Control.Monad.Reader.Class
 import           Data
 import           Data.Aeson.Types
 import           Data.Text                  (Text)
 import           Data.Time                  (UTCTime)
-import           Database.PostgreSQL.Simple
 import           GHC.Generics
 import           IdGenerator
 import           Models
@@ -30,23 +28,6 @@ import           Servant                    hiding (Post)
 import           UsersService               (RegisterUserError (..),
                                              registerUser)
 
-newtype AppM a = AppM {
-  runAppM :: LoggingT (ReaderT Connection Handler) a
-} deriving (
-  Functor,
-  Applicative,
-  Monad,
-  MonadIO,
-  MonadLogger,
-  MonadReader Connection,
-  MonadDbRead User UserDbQueries,
-  MonadDbWrite UserDbWrites,
-  MonadDbRead Post PostDbQueries,
-  MonadDbWrite PostDbWrites,
-  MonadError ServantErr,
-  MonadIdGenerator,
-  MonadTime
-  )
 
 data RegisterBody = RegisterBody {
   bodyUserName :: Text,
@@ -95,10 +76,21 @@ type APIEndpoints =
   :<|> "users" :> Capture "userId" UUID :> "wall" :> Get '[JSON] [ApiPost]
   :<|> "users" :> Capture "userId" UUID :> "timeline" :> ReqBody '[JSON] PostMessageBody :> PostCreated '[JSON] ApiPost
 
-routes :: (MonadLogger m, UserMonadDb m, PostMonadDb m, MonadIdGenerator m, MonadError ServantErr m, MonadTime m) => ServerT APIEndpoints m
+routes :: (MonadLogger m,
+           UserMonadDb m,
+           PostMonadDb m,
+           MonadIdGenerator m,
+           MonadError ServantErr m,
+           MonadTime m,
+           MonadReader ReadOnlyState m) => ServerT APIEndpoints m
 routes = registerUserRoute :<|> userWallRoute :<|> postMessage
 
-postMessage :: (UserMonadDbRead m, PostMonadDb m, MonadIdGenerator m, MonadTime m, MonadError ServantErr m) => UUID -> PostMessageBody -> m ApiPost
+postMessage :: (UserMonadDbRead m,
+                PostMonadDb m,
+                MonadIdGenerator m,
+                MonadTime m,
+                MonadError ServantErr m,
+                MonadReader ReadOnlyState m) => UUID -> PostMessageBody -> m ApiPost
 postMessage _userId _body = do
   ep <- postToTimeline (UserId _userId) (postMessageText _body)
   either throwPostsError (return . postToApi) ep
@@ -106,10 +98,12 @@ postMessage _userId _body = do
     throwPostsError (PostToTimelineError UserIdDoesNotExist) = throwError
       err404
       {errBody = "User id does not exist."}
-
     throwPostsError MessageNotPosted = throwError
       err404
       {errBody = "The message has not been posted correctly."}
+    throwPostsError PostContainsBadWords = throwError
+      err400
+      {errBody = "Post contains inappropriate language."}
 
 postToApi :: Post -> ApiPost
 postToApi _post = ApiPost

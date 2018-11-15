@@ -1,12 +1,14 @@
 {-# LANGUAGE DeriveFunctor              #-}
 {-# LANGUAGE FlexibleInstances          #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE InstanceSigs               #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 
 module Stubs where
 import           Control.Monad.Error.Class
 import           Control.Monad.IO.Class
 import           Control.Monad.Logger
+import           Control.Monad.Reader
 import           Control.Monad.State
 import           Control.Monad.Writer
 import           Data
@@ -19,7 +21,7 @@ import           MonadTime                 (MonadTime, currentUTCTime)
 import           Servant                   (Handler, ServantErr)
 import           Text.Printf
 
-data GlobalState = GlobalState {
+data TestAppState = TestAppState {
   uuidSeed :: Integer,
   users    :: [User],
   posts    :: [Post],
@@ -27,13 +29,14 @@ data GlobalState = GlobalState {
 }
 
 newtype TestM a = TestM {
-    runTestM :: WriterT [String] (StateT GlobalState Handler) a
+  runTestM :: ReaderT ReadOnlyState (WriterT [String] (StateT TestAppState Handler)) a
 } deriving (
   Functor,
   Applicative,
   Monad,
   MonadIO,
-  MonadState GlobalState,
+  MonadState TestAppState,
+  MonadReader ReadOnlyState,
   MonadError ServantErr)
 
 instance MonadDbRead User UserDbQueries TestM where

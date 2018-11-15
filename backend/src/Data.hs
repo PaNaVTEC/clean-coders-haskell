@@ -43,10 +43,10 @@ data UserDbQueries =
   UserByName UserName
   | UserById UserId
 
-instance MonadIO m => MonadDbRead User UserDbQueries (ReaderT Connection m) where
-  queryMany :: UserDbQueries -> ReaderT Connection m [User]
+instance MonadIO m => MonadDbRead User UserDbQueries (ReaderT ReadOnlyState m) where
+  queryMany :: UserDbQueries -> ReaderT ReadOnlyState m [User]
   queryMany q = do
-    conn <- ask
+    conn <- asks connection
     liftIO $ toSql conn q
     where
       toSql :: Connection -> UserDbQueries -> IO [User]
@@ -54,18 +54,18 @@ instance MonadIO m => MonadDbRead User UserDbQueries (ReaderT Connection m) wher
       toSql conn (UserById (UserId n)) = query conn [sql|SELECT * FROM users WHERE userId = ?|] [n]
 
 data UserDbWrites = InsertUser User
-instance MonadIO m => MonadDbWrite UserDbWrites (ReaderT Connection m) where
-  runCommand :: UserDbWrites -> ReaderT Connection m ()
+instance MonadIO m => MonadDbWrite UserDbWrites (ReaderT ReadOnlyState m) where
+  runCommand :: UserDbWrites -> ReaderT ReadOnlyState m ()
   runCommand (InsertUser user) = do
-    conn <- ask
+    conn <- asks connection
     _ <- liftIO $ execute conn [sql|INSERT INTO users VALUES (?, ?, ?, ?)|] (userId user, userName user, about user, password user)
     return ()
 
 data PostDbQueries = PostsByUserId UserId | PostById PostId
-instance MonadIO m => MonadDbRead Post PostDbQueries (ReaderT Connection m) where
-  queryMany :: PostDbQueries -> ReaderT Connection m [Post]
+instance MonadIO m => MonadDbRead Post PostDbQueries (ReaderT ReadOnlyState m) where
+  queryMany :: PostDbQueries -> ReaderT ReadOnlyState m [Post]
   queryMany q = do
-    conn <- ask
+    conn <- asks connection
     liftIO $ toSql conn q
     where
       toSql :: Connection -> PostDbQueries -> IO [Post]
@@ -73,10 +73,10 @@ instance MonadIO m => MonadDbRead Post PostDbQueries (ReaderT Connection m) wher
       toSql conn (PostById (PostId n)) = query conn [sql|SELECT * FROM posts WHERE postId = ?|] [n]
 
 data PostDbWrites = InsertPost Post
-instance MonadIO m => MonadDbWrite PostDbWrites (ReaderT Connection m) where
-  runCommand :: PostDbWrites -> ReaderT Connection m ()
+instance MonadIO m => MonadDbWrite PostDbWrites (ReaderT ReadOnlyState m) where
+  runCommand :: PostDbWrites -> ReaderT ReadOnlyState m ()
   runCommand (InsertPost _post) = do
-    conn <- ask
+    conn <- asks connection
     _ <- liftIO $ execute conn [sql|INSERT INTO posts VALUES (?,?,?,?)|] (postId _post, postUserId _post, postText _post, postDate _post)
     return ()
 

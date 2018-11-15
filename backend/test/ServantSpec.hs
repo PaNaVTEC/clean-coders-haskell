@@ -7,6 +7,7 @@
 
 module ServantSpec (main, spec) where
 
+import           Control.Monad.Reader
 import           Control.Monad.State   (evalStateT)
 import           Control.Monad.Writer
 import qualified Data.ByteString.Char8 as BS8
@@ -29,13 +30,13 @@ main = hspec spec
 
 spec :: Spec
 spec =
-  let state = GlobalState
+  let state = TestAppState
         0
         [anUser nilUUID "used" "" ""]
         [aPost nilUUID nilUUID "A new post" (posixSecondsToUTCTime 0)]
         (posixSecondsToUTCTime 0)
   in
-  with (anAppWith state) $ do
+  with (anAppWith (AppInput ["FUCK"]) state) $ do
   describe "Register user" $ do
 
     it "fail with 400 if username is in use" $
@@ -91,11 +92,14 @@ postRegister :: ByteString -> WaiSession SResponse
 postRegister = request "POST" "/users" headers
   where headers = [("Content-Type", "application/json")]
 
-anAppWith :: Monad m => GlobalState -> m Application
-anAppWith _users = return $ app nt
+anAppWith :: Monad m => AppInput -> TestAppState -> m Application
+anAppWith _input _state = return $ app nt _input
   where
-    nt :: TestM a -> Handler a
-    nt appM = evalStateT (fst <$> runWriterT (runTestM appM)) _users
+    nt :: AppInput -> TestM a -> Handler a
+    nt _input appM = evalStateT
+      (fst <$> runWriterT
+       (runReaderT
+        (runTestM appM) (ReadOnlyState _ _input))) _state
 
 anUser :: UUID -> Text -> Text -> Text -> User
 anUser _id _name _about _password = User
