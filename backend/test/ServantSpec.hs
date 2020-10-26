@@ -7,6 +7,7 @@
 
 module ServantSpec (main, spec) where
 
+import           Control.Monad.Reader
 import           Control.Monad.State   (evalStateT)
 import           Control.Monad.Writer
 import qualified Data.ByteString.Char8 as BS8
@@ -29,22 +30,28 @@ main = hspec spec
 
 spec :: Spec
 spec =
-  with (anAppWith ([anUser nilUUID "used" "" ""], [aPost nilUUID nilUUID "A new post" (posixSecondsToUTCTime 0) ])) $ do
+  let state = TestAppState
+        0
+        [anUser nilUUID "used" "" ""]
+        [aPost nilUUID nilUUID "A new post" (posixSecondsToUTCTime 0)]
+        (posixSecondsToUTCTime 0)
+  in
+  with (anAppWith (AppInput ["FUCK"]) state) $ do
   describe "Register user" $ do
 
-    it "fail with 400 if username is in use" $ do
+    it "fail with 400 if username is in use" $
       postRegister [json|{username: "used", password: "", about: ""}|]
         `shouldRespondWith`
         "Username already in use." {matchStatus = 400}
 
-    it "returns a new user when the username does not exist" $ do
+    it "returns a new user when the username does not exist" $
        postRegister [json|{username: "aUser", password: "pass", about: "About"}|]
          `shouldRespondWith`
-         [json|{id: "00000000-0000-0000-0000-000000000000", username: "aUser", about: "About"}|] {matchStatus = 201}
+         [json|{id: "00000000-0000-0000-0000-000000000001", username: "aUser", about: "About"}|] {matchStatus = 201}
 
   describe "User wall" $ do
 
-    it "returns the wall for the specified user" $ do
+    it "returns the wall for the specified user" $
       getWallOf "00000000-0000-0000-0000-000000000000"
         `shouldRespondWith`
         [json|[{
@@ -54,8 +61,29 @@ spec =
              datetime: "1970-01-01T00:00:00Z"
         }]|] {matchStatus = 200}
 
-    it "returns 404 for a bad request" $ do
+    it "returns 404 for a bad request" $
       getWallOf "incorrect uuid" `shouldRespondWith` 404
+
+  describe "User timeline" $ do
+
+    it "posts a new message in the user timeline" $
+      postMessage "00000000-0000-0000-0000-000000000000" [json|{text:"Another post"}|]
+        `shouldRespondWith`
+        [json|{
+             userId: "00000000-0000-0000-0000-000000000000",
+             postId: "00000000-0000-0000-0000-000000000001",
+             text: "Another post",
+             datetime: "1970-01-01T00:00:00Z"
+        }|] {matchStatus = 201}
+
+    it "does not post a message if it contains bad words" $
+      postMessage "00000000-0000-0000-0000-000000000000" [json|{text:"FUCK post"}|]
+        `shouldRespondWith`
+        "Post contains inappropriate language." {matchStatus = 400}
+
+postMessage :: String -> ByteString -> WaiSession SResponse
+postMessage _userId = request "POST" (BS8.pack $ "/users/" ++ _userId ++ "/timeline") headers
+  where headers = [("Content-Type", "application/json")]
 
 getWallOf :: String -> WaiSession SResponse
 getWallOf _userId = request "GET" (BS8.pack $ "/users/" ++ _userId ++ "/wall")  [] ""
@@ -64,11 +92,14 @@ postRegister :: ByteString -> WaiSession SResponse
 postRegister = request "POST" "/users" headers
   where headers = [("Content-Type", "application/json")]
 
-anAppWith :: Monad m => GlobalState -> m Application
-anAppWith users = return $ app nt
+anAppWith :: Monad m => AppInput -> TestAppState -> m Application
+anAppWith _input _state = return $ app nt _input
   where
-    nt :: TestM a -> Handler a
-    nt appM = evalStateT (fst <$> runWriterT (runTestM appM)) users
+    nt :: AppInput -> TestM a -> Handler a
+    nt _input appM = evalStateT
+      (fst <$> runWriterT
+       (runReaderT
+        (runTestM appM) (ReadOnlyState _ _input))) _state
 
 anUser :: UUID -> Text -> Text -> Text -> User
 anUser _id _name _about _password = User

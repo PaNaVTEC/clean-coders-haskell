@@ -39,6 +39,8 @@ dependencies:
 
 library:
   source-dirs: src
+  ghc-options:
+  - -fdefer-typed-holes
 
 executables:
   cleancoders-openchat-haskell-hs-exe:
@@ -49,6 +51,7 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -fdefer-typed-holes
     dependencies:
     - cleancoders-openchat-haskell
 
@@ -61,6 +64,7 @@ tests:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -fdefer-typed-holes
     dependencies:
     - cleancoders-openchat-haskell
     - hspec

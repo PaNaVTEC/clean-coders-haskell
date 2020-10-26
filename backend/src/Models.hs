@@ -5,6 +5,7 @@ module Models where
 
 import           Data.Text                            (Text)
 import           Data.Time                            (UTCTime)
+import           Database.PostgreSQL.Simple           (Connection)
 import           Database.PostgreSQL.Simple.FromField
 import           Database.PostgreSQL.Simple.FromRow
 import           Database.PostgreSQL.Simple.ToField
@@ -40,3 +41,6 @@ data Post = Post {
   postDate   :: UTCTime
 } deriving (Eq, Show, Generic)
 instance FromRow Post where
+
+data AppInput = AppInput { badWords :: [Text] }
+data ReadOnlyState = ReadOnlyState { connection :: Connection, appInput :: AppInput }
